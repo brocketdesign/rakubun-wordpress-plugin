@@ -2,7 +2,7 @@
 /**
  * Register all actions and filters for the plugin
  */
-class Rakurabu_AI_Loader {
+class Rakubun_AI_Loader {
 
     /**
      * The array of actions registered with WordPress

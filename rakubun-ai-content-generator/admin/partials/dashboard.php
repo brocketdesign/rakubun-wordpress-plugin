@@ -7,10 +7,10 @@ if (!defined('WPINC')) {
 }
 ?>
 
-<div class="wrap rakurabu-ai-dashboard">
+<div class="wrap rakubun-ai-dashboard">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
-    <div class="rakurabu-credits-overview">
+    <div class="rakubun-credits-overview">
         <div class="credits-box">
             <div class="credits-icon">📝</div>
             <div class="credits-info">
@@ -28,23 +28,23 @@ if (!defined('WPINC')) {
         </div>
     </div>
 
-    <div class="rakurabu-quick-actions">
+    <div class="rakubun-quick-actions">
         <h2>Quick Actions</h2>
         <div class="action-buttons">
-            <a href="<?php echo admin_url('admin.php?page=rakurabu-ai-generate-article'); ?>" class="button button-primary button-large">
+            <a href="<?php echo admin_url('admin.php?page=rakubun-ai-generate-article'); ?>" class="button button-primary button-large">
                 Generate Article
             </a>
-            <a href="<?php echo admin_url('admin.php?page=rakurabu-ai-generate-image'); ?>" class="button button-primary button-large">
+            <a href="<?php echo admin_url('admin.php?page=rakubun-ai-generate-image'); ?>" class="button button-primary button-large">
                 Generate Image
             </a>
-            <a href="<?php echo admin_url('admin.php?page=rakurabu-ai-purchase'); ?>" class="button button-secondary button-large">
+            <a href="<?php echo admin_url('admin.php?page=rakubun-ai-purchase'); ?>" class="button button-secondary button-large">
                 Purchase Credits
             </a>
         </div>
     </div>
 
-    <div class="rakurabu-info-section">
-        <h2>About Rakurabu AI Content Generator</h2>
+    <div class="rakubun-info-section">
+        <h2>About Rakubun AI Content Generator</h2>
         <p>This plugin allows you to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E models.</p>
         
         <h3>Free Credits</h3>
@@ -55,7 +55,7 @@ if (!defined('WPINC')) {
         
         <h3>Getting Started</h3>
         <ol>
-            <li>Administrators: Configure your OpenAI API key and Stripe keys in <a href="<?php echo admin_url('admin.php?page=rakurabu-ai-settings'); ?>">Settings</a></li>
+            <li>Administrators: Configure your OpenAI API key and Stripe keys in <a href="<?php echo admin_url('admin.php?page=rakubun-ai-settings'); ?>">Settings</a></li>
             <li>Use your free credits to generate content</li>
             <li>Purchase additional credits when needed</li>
         </ol>

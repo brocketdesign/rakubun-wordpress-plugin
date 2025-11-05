@@ -2,21 +2,21 @@
 
 ## Quick Start
 
-Follow these steps to install and configure the Rakurabu AI Content Generator plugin:
+Follow these steps to install and configure the Rakubun AI Content Generator plugin:
 
 ### 1. Upload Plugin Files
 
 **Method A: Via WordPress Admin Panel**
 1. In WordPress admin, go to **Plugins → Add New**
 2. Click **Upload Plugin**
-3. Choose the `rakurabu-ai-content-generator.zip` file
+3. Choose the `rakubun-ai-content-generator.zip` file
 4. Click **Install Now**
 5. Click **Activate Plugin**
 
 **Method B: Via FTP/File Manager**
-1. Upload the `rakurabu-ai-content-generator` folder to `/wp-content/plugins/`
+1. Upload the `rakubun-ai-content-generator` folder to `/wp-content/plugins/`
 2. Go to **Plugins** in WordPress admin
-3. Find "Rakurabu AI Content Generator" and click **Activate**
+3. Find "Rakubun AI Content Generator" and click **Activate**
 
 ### 2. Get OpenAI API Key
 

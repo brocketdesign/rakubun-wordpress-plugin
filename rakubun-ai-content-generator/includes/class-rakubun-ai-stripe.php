@@ -2,7 +2,7 @@
 /**
  * Stripe payment integration
  */
-class Rakurabu_AI_Stripe {
+class Rakubun_AI_Stripe {
 
     /**
      * Stripe secret key
@@ -18,7 +18,7 @@ class Rakurabu_AI_Stripe {
      * Constructor
      */
     public function __construct() {
-        $this->secret_key = get_option('rakurabu_ai_stripe_secret_key', '');
+        $this->secret_key = get_option('rakubun_ai_stripe_secret_key', '');
     }
 
     /**

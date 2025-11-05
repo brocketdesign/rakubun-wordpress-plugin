@@ -2,14 +2,14 @@
 /**
  * Manages user credits for articles and images
  */
-class Rakurabu_AI_Credits_Manager {
+class Rakubun_AI_Credits_Manager {
 
     /**
      * Get user credits
      */
     public static function get_user_credits($user_id) {
         global $wpdb;
-        $table_name = $wpdb->prefix . 'rakurabu_user_credits';
+        $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
         $credits = $wpdb->get_row($wpdb->prepare(
             "SELECT article_credits, image_credits FROM $table_name WHERE user_id = %d",
@@ -58,7 +58,7 @@ class Rakurabu_AI_Credits_Manager {
      */
     public static function deduct_credits($user_id, $type = 'article', $amount = 1) {
         global $wpdb;
-        $table_name = $wpdb->prefix . 'rakurabu_user_credits';
+        $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
         // Validate type parameter against whitelist to prevent SQL injection
         if (!in_array($type, array('article', 'image'), true)) {
@@ -90,7 +90,7 @@ class Rakurabu_AI_Credits_Manager {
      */
     public static function add_credits($user_id, $type = 'article', $amount = 1) {
         global $wpdb;
-        $table_name = $wpdb->prefix . 'rakurabu_user_credits';
+        $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
         // Validate type parameter against whitelist to prevent SQL injection
         if (!in_array($type, array('article', 'image'), true)) {
@@ -123,7 +123,7 @@ class Rakurabu_AI_Credits_Manager {
      */
     public static function log_transaction($user_id, $type, $amount, $credits, $credit_type, $stripe_id = '', $status = 'completed') {
         global $wpdb;
-        $table_name = $wpdb->prefix . 'rakurabu_transactions';
+        $table_name = $wpdb->prefix . 'rakubun_transactions';
         
         $wpdb->insert(
             $table_name,
@@ -147,7 +147,7 @@ class Rakurabu_AI_Credits_Manager {
      */
     public static function log_generated_content($user_id, $type, $prompt, $content, $image_url = '', $post_id = 0) {
         global $wpdb;
-        $table_name = $wpdb->prefix . 'rakurabu_generated_content';
+        $table_name = $wpdb->prefix . 'rakubun_generated_content';
         
         $wpdb->insert(
             $table_name,

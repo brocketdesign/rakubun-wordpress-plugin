@@ -1,12 +1,12 @@
 # Quick Start Guide
 
-Get up and running with Rakurabu AI Content Generator in 5 minutes!
+Get up and running with Rakubun AI Content Generator in 5 minutes!
 
 ## Step 1: Install the Plugin (1 minute)
 
-1. Upload `rakurabu-ai-content-generator` folder to `/wp-content/plugins/`
+1. Upload `rakubun-ai-content-generator` folder to `/wp-content/plugins/`
 2. Go to **Plugins** in WordPress admin
-3. Click **Activate** on "Rakurabu AI Content Generator"
+3. Click **Activate** on "Rakubun AI Content Generator"
 
 ## Step 2: Get API Keys (2 minutes)
 
@@ -122,7 +122,7 @@ office
 - 📖 Read the [full README](README.md)
 - 🔧 Check [INSTALL.md](INSTALL.md) for detailed setup
 - 🚀 See [FEATURES.md](FEATURES.md) for all capabilities
-- 🐛 Found a bug? Report it on [GitHub](https://github.com/brocketdesign/rakurabu-wordpress-plugin)
+- 🐛 Found a bug? Report it on [GitHub](https://github.com/brocketdesign/rakubun-wordpress-plugin)
 
 ---
 

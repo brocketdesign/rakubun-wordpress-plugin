@@ -2,7 +2,7 @@
 /**
  * OpenAI API integration for article and image generation
  */
-class Rakurabu_AI_OpenAI {
+class Rakubun_AI_OpenAI {
 
     /**
      * OpenAI API key
@@ -18,7 +18,7 @@ class Rakurabu_AI_OpenAI {
      * Constructor
      */
     public function __construct() {
-        $this->api_key = get_option('rakurabu_ai_openai_api_key', '');
+        $this->api_key = get_option('rakubun_ai_openai_api_key', '');
     }
 
     /**

@@ -1,5 +1,5 @@
 /**
- * Rakurabu AI Content Generator Admin JavaScript
+ * Rakubun AI Content Generator Admin JavaScript
  */
 
 (function($) {
@@ -13,18 +13,18 @@
     // Initialize Stripe when document is ready
     $(document).ready(function() {
         // Initialize Stripe if on purchase page
-        if ($('#rakurabu-payment-form').length && rakurabuAI.stripe_public_key) {
+        if ($('#rakubun-payment-form').length && rakubunAI.stripe_public_key) {
             initializeStripe();
         }
 
         // Generate Article Form
-        $('#rakurabu-generate-article-form').on('submit', function(e) {
+        $('#rakubun-generate-article-form').on('submit', function(e) {
             e.preventDefault();
             generateArticle();
         });
 
         // Generate Image Form
-        $('#rakurabu-generate-image-form').on('submit', function(e) {
+        $('#rakubun-generate-image-form').on('submit', function(e) {
             e.preventDefault();
             generateImage();
         });
@@ -40,7 +40,7 @@
         }
 
         try {
-            stripe = Stripe(rakurabuAI.stripe_public_key);
+            stripe = Stripe(rakubunAI.stripe_public_key);
             const elements = stripe.elements();
             cardElement = elements.create('card');
         } catch (error) {
@@ -62,28 +62,28 @@
         }
 
         // Show loading
-        $('#rakurabu-article-result').hide();
-        $('#rakurabu-article-error').hide();
-        $('#rakurabu-article-loading').show();
-        $('#rakurabu-generate-article-form button[type="submit"]').prop('disabled', true);
+        $('#rakubun-article-result').hide();
+        $('#rakubun-article-error').hide();
+        $('#rakubun-article-loading').show();
+        $('#rakubun-generate-article-form button[type="submit"]').prop('disabled', true);
 
         $.ajax({
-            url: rakurabuAI.ajaxurl,
+            url: rakubunAI.ajaxurl,
             type: 'POST',
             data: {
-                action: 'rakurabu_generate_article',
-                nonce: rakurabuAI.nonce,
+                action: 'rakubun_generate_article',
+                nonce: rakubunAI.nonce,
                 title: title,
                 prompt: prompt,
                 create_post: createPost
             },
             success: function(response) {
-                $('#rakurabu-article-loading').hide();
-                $('#rakurabu-generate-article-form button[type="submit"]').prop('disabled', false);
+                $('#rakubun-article-loading').hide();
+                $('#rakubun-generate-article-form button[type="submit"]').prop('disabled', false);
 
                 if (response.success) {
-                    $('#rakurabu-article-content').html(formatArticleContent(response.data.content));
-                    $('#rakurabu-article-result').show();
+                    $('#rakubun-article-content').html(formatArticleContent(response.data.content));
+                    $('#rakubun-article-result').show();
                     
                     // Update credits display
                     updateCreditsDisplay(response.data.credits);
@@ -93,13 +93,13 @@
                         alert('Article generated and saved as draft post!');
                     }
                 } else {
-                    showError('#rakurabu-article-error', response.data.message);
+                    showError('#rakubun-article-error', response.data.message);
                 }
             },
             error: function() {
-                $('#rakurabu-article-loading').hide();
-                $('#rakurabu-generate-article-form button[type="submit"]').prop('disabled', false);
-                showError('#rakurabu-article-error', 'An error occurred. Please try again.');
+                $('#rakubun-article-loading').hide();
+                $('#rakubun-generate-article-form button[type="submit"]').prop('disabled', false);
+                showError('#rakubun-article-error', 'An error occurred. Please try again.');
             }
         });
     }
@@ -118,29 +118,29 @@
         }
 
         // Show loading
-        $('#rakurabu-image-result').hide();
-        $('#rakurabu-image-error').hide();
-        $('#rakurabu-image-loading').show();
-        $('#rakurabu-generate-image-form button[type="submit"]').prop('disabled', true);
+        $('#rakubun-image-result').hide();
+        $('#rakubun-image-error').hide();
+        $('#rakubun-image-loading').show();
+        $('#rakubun-generate-image-form button[type="submit"]').prop('disabled', true);
 
         $.ajax({
-            url: rakurabuAI.ajaxurl,
+            url: rakubunAI.ajaxurl,
             type: 'POST',
             data: {
-                action: 'rakurabu_generate_image',
-                nonce: rakurabuAI.nonce,
+                action: 'rakubun_generate_image',
+                nonce: rakubunAI.nonce,
                 prompt: prompt,
                 size: size,
                 save_to_media: saveToMedia
             },
             success: function(response) {
-                $('#rakurabu-image-loading').hide();
-                $('#rakurabu-generate-image-form button[type="submit"]').prop('disabled', false);
+                $('#rakubun-image-loading').hide();
+                $('#rakubun-generate-image-form button[type="submit"]').prop('disabled', false);
 
                 if (response.success) {
-                    $('#rakurabu-image-preview').html('<img src="' + response.data.url + '" alt="Generated Image">');
-                    $('#rakurabu-image-download').attr('href', response.data.url);
-                    $('#rakurabu-image-result').show();
+                    $('#rakubun-image-preview').html('<img src="' + response.data.url + '" alt="Generated Image">');
+                    $('#rakubun-image-download').attr('href', response.data.url);
+                    $('#rakubun-image-result').show();
                     
                     // Update credits display
                     updateCreditsDisplay(response.data.credits);
@@ -150,13 +150,13 @@
                         alert('Image generated and saved to media library!');
                     }
                 } else {
-                    showError('#rakurabu-image-error', response.data.message);
+                    showError('#rakubun-image-error', response.data.message);
                 }
             },
             error: function() {
-                $('#rakurabu-image-loading').hide();
-                $('#rakurabu-generate-image-form button[type="submit"]').prop('disabled', false);
-                showError('#rakurabu-image-error', 'An error occurred. Please try again.');
+                $('#rakubun-image-loading').hide();
+                $('#rakubun-generate-image-form button[type="submit"]').prop('disabled', false);
+                showError('#rakubun-image-error', 'An error occurred. Please try again.');
             }
         });
     }
@@ -164,7 +164,7 @@
     /**
      * Initiate Payment
      */
-    window.rakurabuInitiatePayment = function(type, amount) {
+    window.rakubunInitiatePayment = function(type, amount) {
         if (!stripe) {
             alert('Payment system is not properly configured. Please contact the administrator.');
             return;
@@ -174,43 +174,43 @@
         currentPaymentAmount = amount;
 
         // Show payment form
-        $('.rakurabu-pricing').hide();
-        $('#rakurabu-payment-form').show();
+        $('.rakubun-pricing').hide();
+        $('#rakubun-payment-form').show();
         
         // Mount card element if not already mounted
         if (cardElement && !cardElement._mounted) {
-            cardElement.mount('#rakurabu-stripe-card-element');
+            cardElement.mount('#rakubun-stripe-card-element');
             cardElement._mounted = true;
         }
 
         // Setup payment button
-        $('#rakurabu-payment-submit').off('click').on('click', processPayment);
+        $('#rakubun-payment-submit').off('click').on('click', processPayment);
     };
 
     /**
      * Cancel Payment
      */
-    window.rakurabuCancelPayment = function() {
-        $('#rakurabu-payment-form').hide();
-        $('.rakurabu-pricing').show();
-        $('#rakurabu-card-errors').hide();
+    window.rakubunCancelPayment = function() {
+        $('#rakubun-payment-form').hide();
+        $('.rakubun-pricing').show();
+        $('#rakubun-card-errors').hide();
     };
 
     /**
      * Process Payment
      */
     function processPayment() {
-        $('#rakurabu-payment-loading').show();
-        $('#rakurabu-payment-submit').prop('disabled', true);
+        $('#rakubun-payment-loading').show();
+        $('#rakubun-payment-submit').prop('disabled', true);
 
         stripe.createPaymentMethod({
             type: 'card',
             card: cardElement,
         }).then(function(result) {
             if (result.error) {
-                $('#rakurabu-payment-loading').hide();
-                $('#rakurabu-payment-submit').prop('disabled', false);
-                showError('#rakurabu-card-errors', result.error.message);
+                $('#rakubun-payment-loading').hide();
+                $('#rakubun-payment-submit').prop('disabled', false);
+                showError('#rakubun-card-errors', result.error.message);
             } else {
                 // Create payment intent via backend
                 createPaymentIntent(result.paymentMethod.id);
@@ -224,11 +224,11 @@
     function createPaymentIntent(paymentMethodId) {
         // First, create a payment intent on the server
         $.ajax({
-            url: rakurabuAI.ajaxurl,
+            url: rakubunAI.ajaxurl,
             type: 'POST',
             data: {
-                action: 'rakurabu_create_payment_intent',
-                nonce: rakurabuAI.nonce,
+                action: 'rakubun_create_payment_intent',
+                nonce: rakubunAI.nonce,
                 credit_type: currentPaymentType
             },
             success: function(response) {
@@ -236,15 +236,15 @@
                     // Confirm the payment with Stripe
                     confirmPayment(response.data.client_secret, paymentMethodId, response.data.payment_intent_id);
                 } else {
-                    $('#rakurabu-payment-loading').hide();
-                    $('#rakurabu-payment-submit').prop('disabled', false);
-                    showError('#rakurabu-payment-error', response.data.message);
+                    $('#rakubun-payment-loading').hide();
+                    $('#rakubun-payment-submit').prop('disabled', false);
+                    showError('#rakubun-payment-error', response.data.message);
                 }
             },
             error: function() {
-                $('#rakurabu-payment-loading').hide();
-                $('#rakurabu-payment-submit').prop('disabled', false);
-                showError('#rakurabu-payment-error', 'Failed to create payment intent. Please try again.');
+                $('#rakubun-payment-loading').hide();
+                $('#rakubun-payment-submit').prop('disabled', false);
+                showError('#rakubun-payment-error', 'Failed to create payment intent. Please try again.');
             }
         });
     }
@@ -257,9 +257,9 @@
             payment_method: paymentMethodId
         }).then(function(result) {
             if (result.error) {
-                $('#rakurabu-payment-loading').hide();
-                $('#rakurabu-payment-submit').prop('disabled', false);
-                showError('#rakurabu-payment-error', result.error.message);
+                $('#rakubun-payment-loading').hide();
+                $('#rakubun-payment-submit').prop('disabled', false);
+                showError('#rakubun-payment-error', result.error.message);
             } else {
                 // Payment succeeded, process on server
                 processPaymentSuccess(paymentIntentId);
@@ -272,38 +272,38 @@
      */
     function processPaymentSuccess(paymentIntentId) {
         $.ajax({
-            url: rakurabuAI.ajaxurl,
+            url: rakubunAI.ajaxurl,
             type: 'POST',
             data: {
-                action: 'rakurabu_process_payment',
-                nonce: rakurabuAI.nonce,
+                action: 'rakubun_process_payment',
+                nonce: rakubunAI.nonce,
                 credit_type: currentPaymentType,
                 payment_intent_id: paymentIntentId
             },
             success: function(response) {
-                $('#rakurabu-payment-loading').hide();
-                $('#rakurabu-payment-submit').prop('disabled', false);
+                $('#rakubun-payment-loading').hide();
+                $('#rakubun-payment-submit').prop('disabled', false);
 
                 if (response.success) {
-                    $('#rakurabu-payment-form').hide();
-                    $('#rakurabu-payment-success').show();
+                    $('#rakubun-payment-form').hide();
+                    $('#rakubun-payment-success').show();
                     
                     // Update credits display
                     updateCreditsDisplay(response.data.credits);
 
                     // Reset after 3 seconds
                     setTimeout(function() {
-                        $('#rakurabu-payment-success').hide();
-                        $('.rakurabu-pricing').show();
+                        $('#rakubun-payment-success').hide();
+                        $('.rakubun-pricing').show();
                     }, 3000);
                 } else {
-                    showError('#rakurabu-payment-error', response.data.message);
+                    showError('#rakubun-payment-error', response.data.message);
                 }
             },
             error: function() {
-                $('#rakurabu-payment-loading').hide();
-                $('#rakurabu-payment-submit').prop('disabled', false);
-                showError('#rakurabu-payment-error', 'Payment processing failed. Please try again.');
+                $('#rakubun-payment-loading').hide();
+                $('#rakubun-payment-submit').prop('disabled', false);
+                showError('#rakubun-payment-error', 'Payment processing failed. Please try again.');
             }
         });
     }
@@ -338,7 +338,7 @@
     /**
      * Copy Content to Clipboard
      */
-    window.rakurabuCopyContent = function(elementId) {
+    window.rakubunCopyContent = function(elementId) {
         const element = document.getElementById(elementId);
         const text = element.innerText;
         

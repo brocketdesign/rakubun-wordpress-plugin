@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Rakurabu AI Content Generator plugin will be documented in this file.
+All notable changes to the Rakubun AI Content Generator plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -137,7 +137,7 @@ Initial release. No upgrade needed.
 ## Support
 
 For bug reports and feature requests, please visit:
-[GitHub Repository](https://github.com/brocketdesign/rakurabu-wordpress-plugin)
+[GitHub Repository](https://github.com/brocketdesign/rakubun-wordpress-plugin)
 
 For security issues, please email security@example.com (do not file public issues).
 

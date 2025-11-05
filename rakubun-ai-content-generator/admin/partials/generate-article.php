@@ -7,18 +7,18 @@ if (!defined('WPINC')) {
 }
 ?>
 
-<div class="wrap rakurabu-ai-generate-article">
+<div class="wrap rakubun-ai-generate-article">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
-    <div class="rakurabu-credits-status">
+    <div class="rakubun-credits-status">
         <p>Available Article Credits: <strong class="credits-count"><?php echo esc_html($credits['article_credits']); ?></strong></p>
         <?php if ($credits['article_credits'] == 0): ?>
-            <p class="notice notice-warning">You have no article credits remaining. <a href="<?php echo admin_url('admin.php?page=rakurabu-ai-purchase'); ?>">Purchase more credits</a></p>
+            <p class="notice notice-warning">You have no article credits remaining. <a href="<?php echo admin_url('admin.php?page=rakubun-ai-purchase'); ?>">Purchase more credits</a></p>
         <?php endif; ?>
     </div>
 
-    <div class="rakurabu-form-container">
-        <form id="rakurabu-generate-article-form">
+    <div class="rakubun-form-container">
+        <form id="rakubun-generate-article-form">
             <table class="form-table">
                 <tr>
                     <th scope="row">
@@ -55,20 +55,20 @@ if (!defined('WPINC')) {
             </p>
         </form>
 
-        <div id="rakurabu-article-result" class="rakurabu-result" style="display:none;">
+        <div id="rakubun-article-result" class="rakubun-result" style="display:none;">
             <h2>Generated Article</h2>
-            <div id="rakurabu-article-content" class="generated-content"></div>
+            <div id="rakubun-article-content" class="generated-content"></div>
             <div class="result-actions">
-                <button type="button" class="button" onclick="rakurabuCopyContent('rakurabu-article-content')">Copy to Clipboard</button>
+                <button type="button" class="button" onclick="rakubunCopyContent('rakubun-article-content')">Copy to Clipboard</button>
             </div>
         </div>
 
-        <div id="rakurabu-article-loading" class="rakurabu-loading" style="display:none;">
+        <div id="rakubun-article-loading" class="rakubun-loading" style="display:none;">
             <div class="spinner is-active"></div>
             <p>Generating your article... This may take a minute.</p>
         </div>
 
-        <div id="rakurabu-article-error" class="notice notice-error" style="display:none;">
+        <div id="rakubun-article-error" class="notice notice-error" style="display:none;">
             <p></p>
         </div>
     </div>

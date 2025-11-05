@@ -11,20 +11,20 @@ if (!current_user_can('manage_options')) {
     wp_die('You do not have sufficient permissions to access this page.');
 }
 
-$openai_api_key = get_option('rakurabu_ai_openai_api_key', '');
-$stripe_public_key = get_option('rakurabu_ai_stripe_public_key', '');
-$stripe_secret_key = get_option('rakurabu_ai_stripe_secret_key', '');
-$article_price = get_option('rakurabu_ai_article_price', 5.00);
-$image_price = get_option('rakurabu_ai_image_price', 2.00);
-$articles_per_purchase = get_option('rakurabu_ai_articles_per_purchase', 10);
-$images_per_purchase = get_option('rakurabu_ai_images_per_purchase', 20);
+$openai_api_key = get_option('rakubun_ai_openai_api_key', '');
+$stripe_public_key = get_option('rakubun_ai_stripe_public_key', '');
+$stripe_secret_key = get_option('rakubun_ai_stripe_secret_key', '');
+$article_price = get_option('rakubun_ai_article_price', 5.00);
+$image_price = get_option('rakubun_ai_image_price', 2.00);
+$articles_per_purchase = get_option('rakubun_ai_articles_per_purchase', 10);
+$images_per_purchase = get_option('rakubun_ai_images_per_purchase', 20);
 ?>
 
-<div class="wrap rakurabu-ai-settings">
+<div class="wrap rakubun-ai-settings">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
     <form method="post" action="">
-        <?php wp_nonce_field('rakurabu_ai_settings', 'rakurabu_ai_settings_nonce'); ?>
+        <?php wp_nonce_field('rakubun_ai_settings', 'rakubun_ai_settings_nonce'); ?>
         
         <h2>API Configuration</h2>
         <table class="form-table">
@@ -101,11 +101,11 @@ $images_per_purchase = get_option('rakurabu_ai_images_per_purchase', 20);
         </table>
 
         <p class="submit">
-            <input type="submit" name="rakurabu_ai_save_settings" class="button button-primary" value="Save Settings">
+            <input type="submit" name="rakubun_ai_save_settings" class="button button-primary" value="Save Settings">
         </p>
     </form>
 
-    <div class="rakurabu-settings-info">
+    <div class="rakubun-settings-info">
         <h2>Setup Instructions</h2>
         <ol>
             <li>Create an account at <a href="https://platform.openai.com/" target="_blank">OpenAI Platform</a></li>

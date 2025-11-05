@@ -6,20 +6,20 @@ if (!defined('WPINC')) {
     die;
 }
 
-$article_price = get_option('rakurabu_ai_article_price', 5.00);
-$image_price = get_option('rakurabu_ai_image_price', 2.00);
-$articles_per_purchase = get_option('rakurabu_ai_articles_per_purchase', 10);
-$images_per_purchase = get_option('rakurabu_ai_images_per_purchase', 20);
+$article_price = get_option('rakubun_ai_article_price', 5.00);
+$image_price = get_option('rakubun_ai_image_price', 2.00);
+$articles_per_purchase = get_option('rakubun_ai_articles_per_purchase', 10);
+$images_per_purchase = get_option('rakubun_ai_images_per_purchase', 20);
 ?>
 
-<div class="wrap rakurabu-ai-purchase">
+<div class="wrap rakubun-ai-purchase">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
-    <div class="rakurabu-credits-status">
+    <div class="rakubun-credits-status">
         <p>Current Credits - Articles: <strong class="credits-count-articles"><?php echo esc_html($credits['article_credits']); ?></strong> | Images: <strong class="credits-count-images"><?php echo esc_html($credits['image_credits']); ?></strong></p>
     </div>
 
-    <div class="rakurabu-pricing">
+    <div class="rakubun-pricing">
         <h2>Purchase Additional Credits</h2>
         
         <div class="pricing-cards">
@@ -33,7 +33,7 @@ $images_per_purchase = get_option('rakurabu_ai_images_per_purchase', 20);
                     <li>High-quality content</li>
                     <li>Auto-create draft posts</li>
                 </ul>
-                <button class="button button-primary button-large" onclick="rakurabuInitiatePayment('articles', <?php echo esc_attr($article_price); ?>)">
+                <button class="button button-primary button-large" onclick="rakubunInitiatePayment('articles', <?php echo esc_attr($article_price); ?>)">
                     Purchase Now
                 </button>
             </div>
@@ -48,31 +48,31 @@ $images_per_purchase = get_option('rakurabu_ai_images_per_purchase', 20);
                     <li>High-quality images</li>
                     <li>Multiple sizes available</li>
                 </ul>
-                <button class="button button-primary button-large" onclick="rakurabuInitiatePayment('images', <?php echo esc_attr($image_price); ?>)">
+                <button class="button button-primary button-large" onclick="rakubunInitiatePayment('images', <?php echo esc_attr($image_price); ?>)">
                     Purchase Now
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="rakurabu-payment-form" style="display:none;">
+    <div id="rakubun-payment-form" style="display:none;">
         <h2>Complete Your Purchase</h2>
-        <div id="rakurabu-stripe-card-element"></div>
-        <div id="rakurabu-card-errors" class="notice notice-error" style="display:none;"></div>
-        <button id="rakurabu-payment-submit" class="button button-primary">Complete Payment</button>
-        <button class="button" onclick="rakurabuCancelPayment()">Cancel</button>
+        <div id="rakubun-stripe-card-element"></div>
+        <div id="rakubun-card-errors" class="notice notice-error" style="display:none;"></div>
+        <button id="rakubun-payment-submit" class="button button-primary">Complete Payment</button>
+        <button class="button" onclick="rakubunCancelPayment()">Cancel</button>
     </div>
 
-    <div id="rakurabu-payment-loading" class="rakurabu-loading" style="display:none;">
+    <div id="rakubun-payment-loading" class="rakubun-loading" style="display:none;">
         <div class="spinner is-active"></div>
         <p>Processing payment...</p>
     </div>
 
-    <div id="rakurabu-payment-error" class="notice notice-error" style="display:none;">
+    <div id="rakubun-payment-error" class="notice notice-error" style="display:none;">
         <p></p>
     </div>
 
-    <div id="rakurabu-payment-success" class="notice notice-success" style="display:none;">
+    <div id="rakubun-payment-success" class="notice notice-success" style="display:none;">
         <p>Payment successful! Your credits have been added.</p>
     </div>
 </div>

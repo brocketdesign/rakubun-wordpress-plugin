@@ -1,10 +1,10 @@
-# Rakurabu WordPress Plugin
+# Rakubun WordPress Plugin
 
-This repository contains the Rakurabu AI Content Generator WordPress plugin.
+This repository contains the Rakubun AI Content Generator WordPress plugin.
 
 ## About
 
-Rakurabu AI Content Generator is a powerful WordPress plugin that enables users to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E 3 models, with integrated Stripe payment processing for purchasing credits.
+Rakubun AI Content Generator is a powerful WordPress plugin that enables users to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E 3 models, with integrated Stripe payment processing for purchasing credits.
 
 ## Features
 
@@ -16,14 +16,14 @@ Rakurabu AI Content Generator is a powerful WordPress plugin that enables users 
 
 ## Installation
 
-1. Copy the `rakurabu-ai-content-generator` folder to your WordPress `/wp-content/plugins/` directory
+1. Copy the `rakubun-ai-content-generator` folder to your WordPress `/wp-content/plugins/` directory
 2. Activate the plugin through the WordPress admin panel
 3. Configure your OpenAI and Stripe API keys in the plugin settings
 4. Start generating content!
 
 ## Documentation
 
-For detailed documentation, see the [plugin README](rakurabu-ai-content-generator/README.md).
+For detailed documentation, see the [plugin README](rakubun-ai-content-generator/README.md).
 
 ## Requirements
 

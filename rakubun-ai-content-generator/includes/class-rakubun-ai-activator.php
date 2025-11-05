@@ -2,7 +2,7 @@
 /**
  * Fired during plugin activation
  */
-class Rakurabu_AI_Activator {
+class Rakubun_AI_Activator {
 
     /**
      * Activate the plugin
@@ -11,7 +11,7 @@ class Rakurabu_AI_Activator {
         global $wpdb;
         
         $charset_collate = $wpdb->get_charset_collate();
-        $table_name = $wpdb->prefix . 'rakurabu_user_credits';
+        $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
         // Create table for tracking user credits
         $sql = "CREATE TABLE IF NOT EXISTS $table_name (
@@ -29,7 +29,7 @@ class Rakurabu_AI_Activator {
         dbDelta($sql);
         
         // Create transactions table
-        $transactions_table = $wpdb->prefix . 'rakurabu_transactions';
+        $transactions_table = $wpdb->prefix . 'rakubun_transactions';
         $sql_transactions = "CREATE TABLE IF NOT EXISTS $transactions_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             user_id bigint(20) NOT NULL,
@@ -47,7 +47,7 @@ class Rakurabu_AI_Activator {
         dbDelta($sql_transactions);
         
         // Create generated content table
-        $content_table = $wpdb->prefix . 'rakurabu_generated_content';
+        $content_table = $wpdb->prefix . 'rakubun_generated_content';
         $sql_content = "CREATE TABLE IF NOT EXISTS $content_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             user_id bigint(20) NOT NULL,
@@ -65,12 +65,12 @@ class Rakurabu_AI_Activator {
         dbDelta($sql_content);
         
         // Set default options
-        add_option('rakurabu_ai_openai_api_key', '');
-        add_option('rakurabu_ai_stripe_public_key', '');
-        add_option('rakurabu_ai_stripe_secret_key', '');
-        add_option('rakurabu_ai_article_price', '5.00');
-        add_option('rakurabu_ai_image_price', '2.00');
-        add_option('rakurabu_ai_articles_per_purchase', '10');
-        add_option('rakurabu_ai_images_per_purchase', '20');
+        add_option('rakubun_ai_openai_api_key', '');
+        add_option('rakubun_ai_stripe_public_key', '');
+        add_option('rakubun_ai_stripe_secret_key', '');
+        add_option('rakubun_ai_article_price', '5.00');
+        add_option('rakubun_ai_image_price', '2.00');
+        add_option('rakubun_ai_articles_per_purchase', '10');
+        add_option('rakubun_ai_images_per_purchase', '20');
     }
 }

@@ -1,8 +1,8 @@
-# Rakurabu AI Content Generator - Features Documentation
+# Rakubun AI Content Generator - Features Documentation
 
 ## Overview
 
-The Rakurabu AI Content Generator is a comprehensive WordPress plugin that leverages cutting-edge AI technology to help content creators generate high-quality articles and images efficiently.
+The Rakubun AI Content Generator is a comprehensive WordPress plugin that leverages cutting-edge AI technology to help content creators generate high-quality articles and images efficiently.
 
 ## Core Features
 
@@ -200,17 +200,17 @@ The Rakurabu AI Content Generator is a comprehensive WordPress plugin that lever
 
 ### Database Tables
 
-1. **wp_rakurabu_user_credits**
+1. **wp_rakubun_user_credits**
    - Stores user credit balances
    - Tracks articles and images separately
    - Updated on generation and purchase
 
-2. **wp_rakurabu_transactions**
+2. **wp_rakubun_transactions**
    - Logs all purchases
    - Stores Stripe payment IDs
    - Tracks amounts and credit types
 
-3. **wp_rakurabu_generated_content**
+3. **wp_rakubun_generated_content**
    - Archives generated content
    - Links to WordPress posts
    - Stores prompts for reference

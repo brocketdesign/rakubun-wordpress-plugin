@@ -7,18 +7,18 @@ if (!defined('WPINC')) {
 }
 ?>
 
-<div class="wrap rakurabu-ai-generate-image">
+<div class="wrap rakubun-ai-generate-image">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
-    <div class="rakurabu-credits-status">
+    <div class="rakubun-credits-status">
         <p>Available Image Credits: <strong class="credits-count"><?php echo esc_html($credits['image_credits']); ?></strong></p>
         <?php if ($credits['image_credits'] == 0): ?>
-            <p class="notice notice-warning">You have no image credits remaining. <a href="<?php echo admin_url('admin.php?page=rakurabu-ai-purchase'); ?>">Purchase more credits</a></p>
+            <p class="notice notice-warning">You have no image credits remaining. <a href="<?php echo admin_url('admin.php?page=rakubun-ai-purchase'); ?>">Purchase more credits</a></p>
         <?php endif; ?>
     </div>
 
-    <div class="rakurabu-form-container">
-        <form id="rakurabu-generate-image-form">
+    <div class="rakubun-form-container">
+        <form id="rakubun-generate-image-form">
             <table class="form-table">
                 <tr>
                     <th scope="row">
@@ -59,20 +59,20 @@ if (!defined('WPINC')) {
             </p>
         </form>
 
-        <div id="rakurabu-image-result" class="rakurabu-result" style="display:none;">
+        <div id="rakubun-image-result" class="rakubun-result" style="display:none;">
             <h2>Generated Image</h2>
-            <div id="rakurabu-image-preview" class="image-preview"></div>
+            <div id="rakubun-image-preview" class="image-preview"></div>
             <div class="result-actions">
-                <a id="rakurabu-image-download" href="#" class="button" download>Download Image</a>
+                <a id="rakubun-image-download" href="#" class="button" download>Download Image</a>
             </div>
         </div>
 
-        <div id="rakurabu-image-loading" class="rakurabu-loading" style="display:none;">
+        <div id="rakubun-image-loading" class="rakubun-loading" style="display:none;">
             <div class="spinner is-active"></div>
             <p>Generating your image... This may take a minute.</p>
         </div>
 
-        <div id="rakurabu-image-error" class="notice notice-error" style="display:none;">
+        <div id="rakubun-image-error" class="notice notice-error" style="display:none;">
             <p></p>
         </div>
     </div>

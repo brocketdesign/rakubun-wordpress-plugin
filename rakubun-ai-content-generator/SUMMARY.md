@@ -1,8 +1,8 @@
-# Rakurabu AI Content Generator - Project Summary
+# Rakubun AI Content Generator - Project Summary
 
 ## Overview
 
-The Rakurabu AI Content Generator is a production-ready WordPress plugin that enables users to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E 3 models, with integrated Stripe payment processing for purchasing credits.
+The Rakubun AI Content Generator is a production-ready WordPress plugin that enables users to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E 3 models, with integrated Stripe payment processing for purchasing credits.
 
 ## Key Accomplishments
 
@@ -36,9 +36,9 @@ The Rakurabu AI Content Generator is a production-ready WordPress plugin that en
    - User role and capability checks
 
 5. **Database Architecture**
-   - `wp_rakurabu_user_credits` - User credit balances
-   - `wp_rakurabu_transactions` - Payment history
-   - `wp_rakurabu_generated_content` - Content audit trail
+   - `wp_rakubun_user_credits` - User credit balances
+   - `wp_rakubun_transactions` - Payment history
+   - `wp_rakubun_generated_content` - Content audit trail
 
 ### ✅ Security Implementation
 
@@ -88,18 +88,18 @@ Six comprehensive documentation files:
 
 ### Plugin Structure
 ```
-rakurabu-ai-content-generator/
-├── rakurabu-ai-content-generator.php (Main plugin file)
+rakubun-ai-content-generator/
+├── rakubun-ai-content-generator.php (Main plugin file)
 ├── includes/
-│   ├── class-rakurabu-ai-activator.php
-│   ├── class-rakurabu-ai-deactivator.php
-│   ├── class-rakurabu-ai-content-generator.php
-│   ├── class-rakurabu-ai-loader.php
-│   ├── class-rakurabu-ai-credits-manager.php
-│   ├── class-rakurabu-ai-openai.php
-│   └── class-rakurabu-ai-stripe.php
+│   ├── class-rakubun-ai-activator.php
+│   ├── class-rakubun-ai-deactivator.php
+│   ├── class-rakubun-ai-content-generator.php
+│   ├── class-rakubun-ai-loader.php
+│   ├── class-rakubun-ai-credits-manager.php
+│   ├── class-rakubun-ai-openai.php
+│   └── class-rakubun-ai-stripe.php
 ├── admin/
-│   ├── class-rakurabu-ai-admin.php
+│   ├── class-rakubun-ai-admin.php
 │   └── partials/
 │       ├── dashboard.php
 │       ├── generate-article.php
@@ -283,7 +283,7 @@ The plugin uses standard WordPress hooks and filters:
 
 ## Conclusion
 
-The Rakurabu AI Content Generator plugin is a complete, production-ready solution for AI-powered content generation in WordPress. With comprehensive security measures, detailed documentation, and a user-friendly interface, it provides a solid foundation for content creators to leverage AI technology within their WordPress sites.
+The Rakubun AI Content Generator plugin is a complete, production-ready solution for AI-powered content generation in WordPress. With comprehensive security measures, detailed documentation, and a user-friendly interface, it provides a solid foundation for content creators to leverage AI technology within their WordPress sites.
 
 ### Quick Stats
 - **Development Time**: Complete implementation
