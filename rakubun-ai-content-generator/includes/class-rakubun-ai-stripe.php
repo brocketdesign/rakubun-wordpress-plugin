@@ -35,7 +35,7 @@ class Rakubun_AI_Stripe {
         $endpoint = self::API_BASE . '/payment_intents';
         
         $data = array(
-            'amount' => $amount * 100, // Convert to cents
+            'amount' => ($currency === 'jpy') ? $amount : $amount * 100, // JPY doesn't use cents
             'currency' => $currency,
             'metadata' => $metadata
         );

@@ -17,6 +17,11 @@
             initializeStripe();
         }
 
+        // Initialize dashboard features
+        if ($('.rakubun-ai-dashboard').length) {
+            initializeDashboard();
+        }
+
         // Generate Article Form
         $('#rakubun-generate-article-form').on('submit', function(e) {
             e.preventDefault();
@@ -57,7 +62,7 @@
         const createPost = $('#create_post').is(':checked');
 
         if (!prompt) {
-            alert('Please enter a prompt for your article.');
+            alert('記事のプロンプトを入力してください。');
             return;
         }
 
@@ -90,7 +95,7 @@
 
                     // Show success message if post was created
                     if (response.data.post_id) {
-                        alert('Article generated and saved as draft post!');
+                        alert('記事が生成され、下書きとして保存されました！');
                     }
                 } else {
                     showError('#rakubun-article-error', response.data.message);
@@ -99,7 +104,7 @@
             error: function() {
                 $('#rakubun-article-loading').hide();
                 $('#rakubun-generate-article-form button[type="submit"]').prop('disabled', false);
-                showError('#rakubun-article-error', 'An error occurred. Please try again.');
+                showError('#rakubun-article-error', 'エラーが発生しました。もう一度お試しください。');
             }
         });
     }
@@ -113,7 +118,7 @@
         const saveToMedia = $('#save_to_media').is(':checked');
 
         if (!prompt) {
-            alert('Please enter a prompt for your image.');
+            alert('画像のプロンプトを入力してください。');
             return;
         }
 
@@ -147,7 +152,7 @@
 
                     // Show success message if saved to media
                     if (response.data.attachment_id) {
-                        alert('Image generated and saved to media library!');
+                        alert('画像が生成され、メディアライブラリに保存されました！');
                     }
                 } else {
                     showError('#rakubun-image-error', response.data.message);
@@ -156,7 +161,7 @@
             error: function() {
                 $('#rakubun-image-loading').hide();
                 $('#rakubun-generate-image-form button[type="submit"]').prop('disabled', false);
-                showError('#rakubun-image-error', 'An error occurred. Please try again.');
+                showError('#rakubun-image-error', 'エラーが発生しました。もう一度お試しください。');
             }
         });
     }
@@ -166,7 +171,7 @@
      */
     window.rakubunInitiatePayment = function(type, amount) {
         if (!stripe) {
-            alert('Payment system is not properly configured. Please contact the administrator.');
+            alert('決済システムが正しく設定されていません。管理者にお問い合わせください。');
             return;
         }
 
@@ -244,7 +249,7 @@
             error: function() {
                 $('#rakubun-payment-loading').hide();
                 $('#rakubun-payment-submit').prop('disabled', false);
-                showError('#rakubun-payment-error', 'Failed to create payment intent. Please try again.');
+                showError('#rakubun-payment-error', '決済の作成に失敗しました。もう一度お試しください。');
             }
         });
     }
@@ -303,7 +308,7 @@
             error: function() {
                 $('#rakubun-payment-loading').hide();
                 $('#rakubun-payment-submit').prop('disabled', false);
-                showError('#rakubun-payment-error', 'Payment processing failed. Please try again.');
+                showError('#rakubun-payment-error', '決済処理に失敗しました。もう一度お試しください。');
             }
         });
     }
@@ -345,7 +350,7 @@
         // Try modern clipboard API first
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(function() {
-                alert('Content copied to clipboard!');
+                alert('コンテンツがクリップボードにコピーされました！');
             }).catch(function(err) {
                 console.error('Failed to copy text: ', err);
                 fallbackCopyTextToClipboard(text);
@@ -380,16 +385,314 @@
         try {
             const successful = document.execCommand('copy');
             if (successful) {
-                alert('Content copied to clipboard!');
+                alert('コンテンツがクリップボードにコピーされました！');
             } else {
-                alert('Failed to copy content. Please copy manually.');
+                alert('コピーに失敗しました。手動でコピーしてください。');
             }
         } catch (err) {
             console.error('Fallback: Failed to copy', err);
-            alert('Failed to copy content. Please copy manually.');
+            alert('コピーに失敗しました。手動でコピーしてください。');
         }
         
         document.body.removeChild(textArea);
     }
 
+    /**
+     * Dashboard Gallery and Analytics Functions
+     */
+
+    function initializeDashboard() {
+        // Image gallery interactions - use event delegation for dynamically loaded content
+        $(document).on('click', '.btn-regenerate', function() {
+            const prompt = $(this).data('prompt');
+            openRegenerationModal(prompt);
+        });
+
+        $(document).on('click', '.btn-view-full', function() {
+            const imageUrl = $(this).data('url');
+            openImageViewer(imageUrl);
+        });
+
+        // Modal interactions
+        $(document).on('click', '.modal-close, .viewer-close', function() {
+            closeModals();
+        });
+
+        // Close modals on outside click
+        $(document).on('click', '.regeneration-modal, .image-viewer-modal', function(e) {
+            if (e.target === this) {
+                closeModals();
+            }
+        });
+
+        // Regeneration form submission
+        $(document).on('submit', '#regenerationForm', function(e) {
+            e.preventDefault();
+            regenerateImage();
+        });
+
+        // Keyboard shortcuts for modals
+        $(document).on('keydown', function(e) {
+            // Escape key to close modals
+            if (e.key === 'Escape') {
+                closeModals();
+            }
+            
+            // Space or Enter to toggle zoom in image viewer
+            if ($('#imageViewerModal').is(':visible')) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    $('#viewerImage').toggleClass('zoomed');
+                }
+                
+                // Arrow keys to navigate between images (future feature)
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    // Could implement next/previous image navigation here
+                    console.log('Arrow key navigation - feature for future implementation');
+                }
+            }
+        });
+
+        // Analytics refresh (optional periodic update)
+        setInterval(refreshAnalytics, 300000); // Refresh every 5 minutes
+        
+        // Initialize gallery animations if on dashboard
+        if ($('.gallery-grid').length) {
+            addGalleryAnimations();
+        }
+    }
+
+    /**
+     * Open regeneration modal
+     */
+    function openRegenerationModal(prompt) {
+        $('#regenerate-prompt').val(prompt);
+        $('#regenerationModal').fadeIn(300);
+    }
+
+    /**
+     * Open Image Viewer
+     */
+    function openImageViewer(imageUrl) {
+        $('#viewerImage').attr('src', imageUrl);
+        $('#imageViewerModal').fadeIn(300);
+        
+        // Reset zoom state
+        $('#viewerImage').removeClass('zoomed');
+        
+        // Add zoom functionality
+        $('#viewerImage').off('click').on('click', function() {
+            $(this).toggleClass('zoomed');
+        });
+        
+        // Prevent body scroll when modal is open
+        $('body').css('overflow', 'hidden');
+        
+        // Auto-hide instructions after 3 seconds
+        setTimeout(function() {
+            $('.viewer-instructions').fadeOut(500);
+        }, 3000);
+        
+        // Show instructions again on mouse move
+        $(document).on('mousemove.viewer', function() {
+            $('.viewer-instructions').fadeIn(300);
+            clearTimeout(window.instructionTimer);
+            window.instructionTimer = setTimeout(function() {
+                $('.viewer-instructions').fadeOut(500);
+            }, 2000);
+        });
+    }
+
+    /**
+     * Close all modals
+     */
+    function closeModals() {
+        $('.regeneration-modal, .image-viewer-modal').fadeOut(300);
+        
+        // Reset zoom and restore body scroll
+        $('#viewerImage').removeClass('zoomed');
+        $('body').css('overflow', 'auto');
+        
+        // Clean up event listeners
+        $(document).off('mousemove.viewer');
+        clearTimeout(window.instructionTimer);
+        
+        // Reset instructions visibility
+        $('.viewer-instructions').show();
+    }
+
+    /**
+     * Regenerate image with new parameters
+     */
+    function regenerateImage() {
+        const prompt = $('#regenerate-prompt').val();
+        const size = $('#regenerate-size').val();
+        const $form = $('#regenerationForm');
+        const $submitBtn = $form.find('button[type="submit"]');
+        const $btnText = $submitBtn.find('.btn-text');
+        const $btnLoading = $submitBtn.find('.btn-loading');
+
+        if (!prompt.trim()) {
+            alert('プロンプトを入力してください。');
+            return;
+        }
+
+        // Show loading state
+        $submitBtn.prop('disabled', true);
+        $btnText.hide();
+        $btnLoading.show();
+
+        $.ajax({
+            url: rakubunAI.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'rakubun_regenerate_image',
+                nonce: rakubunAI.nonce,
+                prompt: prompt,
+                size: size
+            },
+            success: function(response) {
+                $submitBtn.prop('disabled', false);
+                $btnText.show();
+                $btnLoading.hide();
+
+                if (response.success) {
+                    // Show success message
+                    alert(response.data.message);
+                    
+                    // Update credits display
+                    updateCreditsDisplay(response.data.credits);
+                    
+                    // Close modal
+                    closeModals();
+                    
+                    // Refresh gallery
+                    refreshGallery();
+                    
+                    // Refresh analytics
+                    refreshAnalytics();
+                } else {
+                    alert(response.data.message);
+                }
+            },
+            error: function() {
+                $submitBtn.prop('disabled', false);
+                $btnText.show();
+                $btnLoading.hide();
+                alert('エラーが発生しました。再試行してください。');
+            }
+        });
+    }
+
+    /**
+     * Refresh gallery with new images
+     */
+    function refreshGallery() {
+        // In a full implementation, you might want to reload the gallery section
+        // For now, we'll just reload the page to show the new image
+        setTimeout(function() {
+            location.reload();
+        }, 1000);
+    }
+
+    /**
+     * Refresh analytics data
+     */
+    function refreshAnalytics() {
+        $.ajax({
+            url: rakubunAI.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'rakubun_get_analytics',
+                nonce: rakubunAI.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    updateAnalyticsDisplay(response.data.analytics);
+                }
+            },
+            error: function() {
+                console.log('Failed to refresh analytics');
+            }
+        });
+    }
+
+    /**
+     * Update analytics display with new data
+     */
+    function updateAnalyticsDisplay(analytics) {
+        // Update analytics cards
+        $('.analytics-card').each(function() {
+            const $card = $(this);
+            const $icon = $card.find('.card-icon');
+            
+            if ($icon.text() === '📈') {
+                // Total articles
+                $card.find('h3').text(analytics.total_articles);
+                $card.find('.recent-activity').text('過去7日間: ' + analytics.recent_articles + '件');
+            } else if ($icon.text() === '🎨') {
+                // Total images
+                $card.find('h3').text(analytics.total_images);
+                $card.find('.recent-activity').text('過去7日間: ' + analytics.recent_images + '件');
+            } else if ($icon.text() === '💰') {
+                // Total spent
+                $card.find('h3').text('¥' + Number(analytics.total_spent || 0).toLocaleString());
+            } else if ($icon.text() === '⚡') {
+                // Weekly activity
+                $card.find('h3').text(analytics.recent_articles + analytics.recent_images);
+            }
+        });
+    }
+
+    /**
+     * Enhanced gallery item animations
+     */
+    function addGalleryAnimations() {
+        $('.gallery-item').each(function(index) {
+            $(this).css('animation-delay', (index * 100) + 'ms');
+            $(this).addClass('fade-in');
+        });
+    }
+
+    /**
+     * Chart interactions
+     */
+    $(document).on('mouseenter', '.bar', function() {
+        const title = $(this).attr('title');
+        // You could implement a tooltip here
+        console.log(title);
+    });
+
 })(jQuery);
+
+/**
+ * Additional CSS animations for enhanced UX
+ */
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.6s ease forwards;
+        opacity: 0;
+    }
+    
+    .chart-bar:hover .bar {
+        filter: brightness(1.2);
+    }
+    
+    .analytics-card:hover .card-icon {
+        transform: scale(1.1);
+        transition: transform 0.3s ease;
+    }
+`;
+document.head.appendChild(style);

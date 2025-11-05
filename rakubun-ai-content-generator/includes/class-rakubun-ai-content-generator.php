@@ -58,6 +58,8 @@ class Rakubun_AI_Content_Generator {
         $this->loader->add_action('wp_ajax_rakubun_create_payment_intent', $plugin_admin, 'ajax_create_payment_intent');
         $this->loader->add_action('wp_ajax_rakubun_process_payment', $plugin_admin, 'ajax_process_payment');
         $this->loader->add_action('wp_ajax_rakubun_get_credits', $plugin_admin, 'ajax_get_credits');
+        $this->loader->add_action('wp_ajax_rakubun_regenerate_image', $plugin_admin, 'ajax_regenerate_image');
+        $this->loader->add_action('wp_ajax_rakubun_get_analytics', $plugin_admin, 'ajax_get_analytics');
     }
 
     /**

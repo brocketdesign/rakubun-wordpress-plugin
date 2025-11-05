@@ -53,6 +53,7 @@ class Rakubun_AI_Activator {
             user_id bigint(20) NOT NULL,
             content_type varchar(20) NOT NULL,
             post_id bigint(20),
+            attachment_id bigint(20),
             prompt text,
             generated_content longtext,
             image_url varchar(500),
@@ -64,13 +65,47 @@ class Rakubun_AI_Activator {
         
         dbDelta($sql_content);
         
+        // Migration: Add attachment_id column if it doesn't exist
+        $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $content_table LIKE 'attachment_id'");
+        if (empty($column_exists)) {
+            $wpdb->query("ALTER TABLE $content_table ADD COLUMN attachment_id bigint(20) AFTER post_id");
+        }
+        
         // Set default options
         add_option('rakubun_ai_openai_api_key', '');
         add_option('rakubun_ai_stripe_public_key', '');
         add_option('rakubun_ai_stripe_secret_key', '');
-        add_option('rakubun_ai_article_price', '5.00');
-        add_option('rakubun_ai_image_price', '2.00');
+        add_option('rakubun_ai_article_price', '750');
+        add_option('rakubun_ai_image_price', '300');
         add_option('rakubun_ai_articles_per_purchase', '10');
         add_option('rakubun_ai_images_per_purchase', '20');
+        
+        // Migration: Update existing USD prices to JPY
+        self::migrate_currency_to_jpy();
+    }
+    
+    /**
+     * Migrate existing USD prices to JPY
+     */
+    private static function migrate_currency_to_jpy() {
+        // Check if migration was already done
+        if (get_option('rakubun_ai_currency_migrated_to_jpy', false)) {
+            return;
+        }
+        
+        // Update article price from $5.00 to ¥750
+        $current_article_price = get_option('rakubun_ai_article_price', 750);
+        if ($current_article_price <= 10) { // If it's still in USD range
+            update_option('rakubun_ai_article_price', 750);
+        }
+        
+        // Update image price from $2.00 to ¥300  
+        $current_image_price = get_option('rakubun_ai_image_price', 300);
+        if ($current_image_price <= 10) { // If it's still in USD range
+            update_option('rakubun_ai_image_price', 300);
+        }
+        
+        // Mark migration as completed
+        update_option('rakubun_ai_currency_migrated_to_jpy', true);
     }
 }

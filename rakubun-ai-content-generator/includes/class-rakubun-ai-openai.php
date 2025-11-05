@@ -83,6 +83,21 @@ class Rakubun_AI_OpenAI {
             );
         }
 
+        // Validate and sanitize the prompt
+        $prompt = trim($prompt);
+        if (empty($prompt)) {
+            return array(
+                'success' => false,
+                'error' => 'Prompt cannot be empty.'
+            );
+        }
+
+        // Validate size parameter
+        $allowed_sizes = array('1024x1024', '1024x1792', '1792x1024');
+        if (!in_array($size, $allowed_sizes)) {
+            $size = '1024x1024'; // Default fallback
+        }
+
         $endpoint = $this->api_base . '/images/generations';
         
         $data = array(
@@ -90,7 +105,8 @@ class Rakubun_AI_OpenAI {
             'prompt' => $prompt,
             'n' => 1,
             'size' => $size,
-            'quality' => 'standard'
+            'quality' => 'standard',
+            'response_format' => 'url'
         );
 
         $response = $this->make_request($endpoint, $data);
@@ -122,15 +138,18 @@ class Rakubun_AI_OpenAI {
         $args = array(
             'headers' => array(
                 'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $this->api_key
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'User-Agent' => 'Rakubun-AI-WordPress-Plugin/1.0'
             ),
             'body' => json_encode($data),
-            'timeout' => 120
+            'timeout' => 120,
+            'method' => 'POST'
         );
 
         $response = wp_remote_post($endpoint, $args);
 
         if (is_wp_error($response)) {
+            error_log('OpenAI API Error: ' . $response->get_error_message());
             return array(
                 'success' => false,
                 'error' => $response->get_error_message()
@@ -140,6 +159,11 @@ class Rakubun_AI_OpenAI {
         $status_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
 
+        // Log the full response for debugging
+        if ($status_code !== 200) {
+            error_log('OpenAI API Response: Status ' . $status_code . ', Body: ' . $body);
+        }
+
         if ($status_code !== 200) {
             $error_body = json_decode($body, true);
             $error_message = isset($error_body['error']['message']) 
@@ -148,7 +172,9 @@ class Rakubun_AI_OpenAI {
             
             return array(
                 'success' => false,
-                'error' => $error_message
+                'error' => $error_message,
+                'status_code' => $status_code,
+                'raw_response' => $body
             );
         }
 
