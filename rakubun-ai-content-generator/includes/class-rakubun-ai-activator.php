@@ -99,7 +99,7 @@ class Rakubun_AI_Activator {
             $wpdb->query("ALTER TABLE $content_table ADD COLUMN attachment_id bigint(20) AFTER post_id");
         }
         
-        // Set default options
+        // Set default options (keep for backward compatibility but not used)
         add_option('rakubun_ai_openai_api_key', '');
         add_option('rakubun_ai_stripe_public_key', '');
         add_option('rakubun_ai_stripe_secret_key', '');
@@ -108,8 +108,53 @@ class Rakubun_AI_Activator {
         add_option('rakubun_ai_articles_per_purchase', '10');
         add_option('rakubun_ai_images_per_purchase', '20');
         
+        // Set activation date
+        add_option('rakubun_ai_activation_date', current_time('mysql'));
+        
+        // Initialize external API registration
+        self::initialize_external_connection();
+        
         // Migration: Update existing USD prices to JPY
         self::migrate_currency_to_jpy();
+        
+        // Schedule analytics sync
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        Rakubun_AI_External_API::schedule_analytics_sync();
+    }
+    
+    /**
+     * Initialize connection with external dashboard
+     */
+    private static function initialize_external_connection() {
+        // Set initial registration status
+        add_option('rakubun_ai_registration_status', 'not_registered');
+        add_option('rakubun_ai_status', 'enabled');
+        
+        // Generate unique instance ID if not exists
+        $instance_id = get_option('rakubun_ai_instance_id');
+        if (!$instance_id) {
+            $instance_id = wp_generate_uuid4();
+            add_option('rakubun_ai_instance_id', $instance_id);
+        }
+        
+        // Attempt to register with external dashboard in background
+        wp_schedule_single_event(time() + 60, 'rakubun_ai_attempt_registration');
+    }
+    
+    /**
+     * Attempt registration with external dashboard (background task)
+     */
+    public static function attempt_registration() {
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        $external_api = new Rakubun_AI_External_API();
+        
+        if ($external_api->register_plugin()) {
+            // Registration successful
+            update_option('rakubun_ai_registration_status', 'registered');
+        } else {
+            // Registration failed, will try again manually through admin
+            update_option('rakubun_ai_registration_status', 'failed');
+        }
     }
     
     /**

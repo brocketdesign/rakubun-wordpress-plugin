@@ -94,25 +94,8 @@ class Rakubun_AI_Credits_Manager {
         return array(
             'article_credits' => (int) $credits->article_credits,
             'image_credits' => (int) $credits->image_credits,
-            'rewrite_credits' => isset($credits->rewrite_credits) ? (int) $credits->rewrite_credits : 0
+            'rewrite_credits' => (int) ($credits->rewrite_credits ?? 0)
         );
-    }
-
-    /**
-     * Check if user has credits
-     */
-    public static function has_credits($user_id, $type = 'article') {
-        $credits = self::get_user_credits($user_id);
-        
-        if ($type === 'article') {
-            return $credits['article_credits'] > 0;
-        } elseif ($type === 'image') {
-            return $credits['image_credits'] > 0;
-        } elseif ($type === 'rewrite') {
-            return $credits['rewrite_credits'] > 0;
-        } else {
-            return false;
-        }
     }
 
     /**
@@ -142,40 +125,58 @@ class Rakubun_AI_Credits_Manager {
         global $wpdb;
         $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
-        // Validate type parameter against whitelist to prevent SQL injection
-        if (!in_array($credit_type, array('article', 'image', 'rewrite'), true)) {
+        // Get current credits
+        $current_credits = self::get_local_credits($user_id);
+        
+        $column_map = array(
+            'article' => 'article_credits',
+            'image' => 'image_credits', 
+            'rewrite' => 'rewrite_credits'
+        );
+        
+        if (!isset($column_map[$credit_type])) {
             return false;
         }
         
-        // Use separate queries for each type to avoid dynamic column names
-        if ($credit_type === 'article') {
-            $result = $wpdb->query($wpdb->prepare(
-                "UPDATE $table_name SET article_credits = article_credits - %d WHERE user_id = %d AND article_credits >= %d",
-                $amount,
-                $user_id,
-                $amount
-            ));
-        } elseif ($credit_type === 'image') {
-            $result = $wpdb->query($wpdb->prepare(
-                "UPDATE $table_name SET image_credits = image_credits - %d WHERE user_id = %d AND image_credits >= %d",
-                $amount,
-                $user_id,
-                $amount
-            ));
-        } else { // rewrite
-            $result = $wpdb->query($wpdb->prepare(
-                "UPDATE $table_name SET rewrite_credits = rewrite_credits - %d WHERE user_id = %d AND rewrite_credits >= %d",
-                $amount,
-                $user_id,
-                $amount
-            ));
+        $column = $column_map[$credit_type];
+        $current_amount = $current_credits[$column];
+        
+        if ($current_amount < $amount) {
+            return false; // Not enough credits
         }
         
-        return $result > 0;
+        $new_amount = $current_amount - $amount;
+        
+        $result = $wpdb->update(
+            $table_name,
+            array($column => $new_amount),
+            array('user_id' => $user_id),
+            array('%d'),
+            array('%d')
+        );
+        
+        return $result !== false;
     }
 
     /**
-     * Add credits to user (local database only - external API manages this)
+     * Check if user has credits
+     */
+    public static function has_credits($user_id, $type = 'article') {
+        $credits = self::get_user_credits($user_id);
+        
+        if ($type === 'article') {
+            return $credits['article_credits'] > 0;
+        } elseif ($type === 'image') {
+            return $credits['image_credits'] > 0;
+        } elseif ($type === 'rewrite') {
+            return $credits['rewrite_credits'] > 0;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Add credits to user
      */
     public static function add_credits($user_id, $type = 'article', $amount = 1) {
         global $wpdb;
@@ -187,7 +188,7 @@ class Rakubun_AI_Credits_Manager {
         }
         
         // Ensure user has a credits record
-        $credits = self::get_local_credits($user_id);
+        $credits = self::get_user_credits($user_id);
         
         // Use separate queries for each type to avoid dynamic column names
         if ($type === 'article') {
@@ -244,7 +245,7 @@ class Rakubun_AI_Credits_Manager {
         global $wpdb;
         $table_name = $wpdb->prefix . 'rakubun_generated_content';
         
-        $result = $wpdb->insert(
+        $wpdb->insert(
             $table_name,
             array(
                 'user_id' => $user_id,
@@ -258,12 +259,6 @@ class Rakubun_AI_Credits_Manager {
             ),
             array('%d', '%s', '%d', '%d', '%s', '%s', '%s', '%s')
         );
-        
-        // Also log to external API for analytics
-        $external_api = self::get_external_api();
-        if ($external_api->is_connected()) {
-            $external_api->log_generation($user_id, $type, $prompt, $content, 1);
-        }
         
         return $wpdb->insert_id;
     }
@@ -355,36 +350,111 @@ class Rakubun_AI_Credits_Manager {
     }
 
     /**
-     * Get all transactions for a user
+     * Get generated images for gallery
      */
-    public static function get_user_transactions($user_id, $limit = 20) {
+    public static function get_user_images($user_id, $limit = 50) {
         global $wpdb;
-        $table_name = $wpdb->prefix . 'rakubun_transactions';
+        $content_table = $wpdb->prefix . 'rakubun_generated_content';
         
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table_name WHERE user_id = %d ORDER BY created_at DESC LIMIT %d",
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, prompt, image_url, created_at 
+             FROM $content_table 
+             WHERE user_id = %d AND content_type = 'image' AND status = 'completed' AND image_url != ''
+             ORDER BY created_at DESC 
+             LIMIT %d",
             $user_id,
             $limit
         ));
+        
+        return $results;
     }
 
     /**
-     * Clean old transactions (older than 1 year)
+     * Get content by ID for regeneration
      */
-    public static function cleanup_old_data() {
+    public static function get_content_by_id($content_id, $user_id) {
         global $wpdb;
-        
-        // Clean old transactions
-        $transactions_table = $wpdb->prefix . 'rakubun_transactions';
-        $wpdb->query("DELETE FROM $transactions_table WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 YEAR)");
-        
-        // Clean old generated content (keep only metadata, remove content)
         $content_table = $wpdb->prefix . 'rakubun_generated_content';
-        $wpdb->query(
-            "UPDATE $content_table 
-             SET generated_content = '[Archived]' 
-             WHERE created_at < DATE_SUB(NOW(), INTERVAL 6 MONTH) 
-             AND generated_content != '[Archived]'"
+        
+        $result = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $content_table WHERE id = %d AND user_id = %d",
+            $content_id,
+            $user_id
+        ));
+        
+        return $result;
+    }
+
+    /**
+     * Get rewrite statistics for user
+     */
+    public static function get_rewrite_statistics($user_id) {
+        global $wpdb;
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        
+        // Get total rewrites count
+        $total_rewrites = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $rewrite_table WHERE user_id = %d",
+            $user_id
+        ));
+        
+        // Get total character changes
+        $characters_added = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(character_change) FROM $rewrite_table WHERE user_id = %d AND character_change > 0",
+            $user_id
+        ));
+        
+        // Get total SEO improvements
+        $seo_improvements = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(seo_improvements) FROM $rewrite_table WHERE user_id = %d",
+            $user_id
+        ));
+        
+        // Get recent rewrites
+        $recent_rewrites = $wpdb->get_results($wpdb->prepare(
+            "SELECT r.*, p.post_title 
+             FROM $rewrite_table r 
+             LEFT JOIN {$wpdb->posts} p ON r.post_id = p.ID 
+             WHERE r.user_id = %d 
+             ORDER BY r.rewrite_date DESC 
+             LIMIT 10",
+            $user_id
+        ));
+        
+        return array(
+            'total_rewrites' => (int) $total_rewrites,
+            'characters_added' => (int) $characters_added,
+            'seo_improvements' => (int) $seo_improvements,
+            'recent_rewrites' => $recent_rewrites
         );
+    }
+
+    /**
+     * Record a rewrite activity
+     */
+    public static function record_rewrite($user_id, $post_id, $original_content, $rewritten_content, $seo_improvements = 0) {
+        global $wpdb;
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        
+        $post = get_post($post_id);
+        $character_change = strlen($rewritten_content) - strlen($original_content);
+        
+        $result = $wpdb->insert(
+            $rewrite_table,
+            array(
+                'user_id' => $user_id,
+                'post_id' => $post_id,
+                'post_title' => $post ? $post->post_title : '',
+                'original_content' => $original_content,
+                'rewritten_content' => $rewritten_content,
+                'character_change' => $character_change,
+                'seo_improvements' => $seo_improvements,
+                'status' => 'completed',
+                'rewrite_date' => current_time('mysql')
+            ),
+            array('%d', '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s')
+        );
+        
+        return $result !== false;
     }
 }

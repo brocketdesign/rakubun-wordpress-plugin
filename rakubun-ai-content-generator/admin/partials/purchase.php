@@ -6,46 +6,56 @@ if (!defined('WPINC')) {
     die;
 }
 
-$article_price = get_option('rakubun_ai_article_price', 750);
-$image_price = get_option('rakubun_ai_image_price', 300);
-$articles_per_purchase = get_option('rakubun_ai_articles_per_purchase', 10);
-$images_per_purchase = get_option('rakubun_ai_images_per_purchase', 20);
+// Initialize external API to get packages
+require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+$external_api = new Rakubun_AI_External_API();
 
-// Rewrite package pricing
-$rewrite_packages = array(
-    'starter' => array(
-        'name' => 'スターターパック',
-        'rewrites' => 50,
-        'price' => 3000,
-        'per_rewrite' => 60,
-        'suitable_for' => '〜50記事のサイト'
-    ),
-    'standard' => array(
-        'name' => 'スタンダードパック',
-        'rewrites' => 150,
-        'price' => 7500,
-        'per_rewrite' => 50,
-        'discount' => '17%オフ',
-        'suitable_for' => '〜100記事のサイト'
-    ),
-    'premium' => array(
-        'name' => 'プレミアムパック',
-        'rewrites' => 300,
-        'price' => 12000,
-        'per_rewrite' => 40,
-        'discount' => '33%オフ',
-        'suitable_for' => '100記事以上のサイト',
-        'popular' => true
-    ),
-    'enterprise' => array(
-        'name' => 'エンタープライズパック',
-        'rewrites' => 500,
-        'price' => 17500,
-        'per_rewrite' => 35,
-        'discount' => '42%オフ',
-        'suitable_for' => '大規模サイト・複数サイト運営'
-    )
-);
+// Get packages from external API
+$packages = array();
+if ($external_api->is_connected()) {
+    $cache_key = 'rakubun_ai_packages';
+    $packages = get_transient($cache_key);
+    
+    if ($packages === false) {
+        $packages = $external_api->get_packages();
+        if ($packages) {
+            // Cache for 1 hour
+            set_transient($cache_key, $packages, HOUR_IN_SECONDS);
+        }
+    }
+}
+
+// Fallback to local pricing if external API is not available
+if (empty($packages)) {
+    $article_price = get_option('rakubun_ai_article_price', 750);
+    $image_price = get_option('rakubun_ai_image_price', 300);
+    $articles_per_purchase = get_option('rakubun_ai_articles_per_purchase', 10);
+    $images_per_purchase = get_option('rakubun_ai_images_per_purchase', 20);
+    
+    // Default packages structure for backward compatibility
+    $packages = array(
+        'articles' => array(
+            array(
+                'id' => 'article_standard',
+                'name' => '記事生成パッケージ',
+                'credits' => $articles_per_purchase,
+                'price' => $article_price,
+                'type' => 'article'
+            )
+        ),
+        'images' => array(
+            array(
+                'id' => 'image_standard',
+                'name' => '画像生成パッケージ',
+                'credits' => $images_per_purchase,
+                'price' => $image_price,
+                'type' => 'image'
+            )
+        )
+    );
+}
+
+$is_connected = $external_api->is_connected();
 ?>
 
 <div class="wrap rakubun-ai-purchase">

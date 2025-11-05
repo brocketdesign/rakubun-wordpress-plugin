@@ -46,6 +46,20 @@ register_activation_hook(__FILE__, 'activate_rakubun_ai_content_generator');
 register_deactivation_hook(__FILE__, 'deactivate_rakubun_ai_content_generator');
 
 /**
+ * Handle scheduled registration attempt
+ */
+add_action('rakubun_ai_attempt_registration', array('Rakubun_AI_Activator', 'attempt_registration'));
+
+/**
+ * Handle scheduled analytics sync
+ */
+add_action('rakubun_ai_sync_analytics', function() {
+    require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+    $external_api = new Rakubun_AI_External_API();
+    $external_api->send_analytics();
+});
+
+/**
  * The core plugin class
  */
 require RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-content-generator.php';

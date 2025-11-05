@@ -36,6 +36,7 @@ class Rakubun_AI_Content_Generator {
      */
     private function load_dependencies() {
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-loader.php';
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-credits-manager.php';
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-openai.php';
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-auto-rewriter.php';

@@ -5,9 +5,9 @@
 class Rakubun_AI_OpenAI {
 
     /**
-     * OpenAI API key
+     * OpenAI configuration from external API
      */
-    private $api_key;
+    private $config;
 
     /**
      * API base URL
@@ -15,27 +15,68 @@ class Rakubun_AI_OpenAI {
     private $api_base = 'https://api.openai.com/v1';
 
     /**
+     * External API instance
+     */
+    private $external_api;
+
+    /**
      * Constructor
      */
     public function __construct() {
-        $this->api_key = get_option('rakubun_ai_openai_api_key', '');
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        $this->external_api = new Rakubun_AI_External_API();
+        $this->config = $this->get_openai_config();
+    }
+
+    /**
+     * Get OpenAI configuration from external API
+     */
+    private function get_openai_config() {
+        // Check cache first
+        $cache_key = 'rakubun_ai_openai_config';
+        $config = get_transient($cache_key);
+        
+        if ($config === false) {
+            if ($this->external_api->is_connected()) {
+                $config = $this->external_api->get_openai_config();
+                if ($config) {
+                    // Cache for 1 hour
+                    set_transient($cache_key, $config, HOUR_IN_SECONDS);
+                }
+            }
+            
+            // Fallback to local settings if external API fails
+            if (!$config) {
+                $config = array(
+                    'api_key' => get_option('rakubun_ai_openai_api_key', ''),
+                    'model_article' => 'gpt-4',
+                    'model_image' => 'dall-e-3',
+                    'max_tokens' => 2000,
+                    'temperature' => 0.7
+                );
+            }
+        }
+        
+        return $config;
     }
 
     /**
      * Generate article using GPT-4
      */
-    public function generate_article($prompt, $max_tokens = 2000) {
-        if (empty($this->api_key)) {
+    public function generate_article($prompt, $max_tokens = null) {
+        $config = $this->get_openai_config();
+        
+        if (empty($config['api_key'])) {
             return array(
                 'success' => false,
-                'error' => 'OpenAI API key is not configured.'
+                'error' => 'OpenAI API key is not configured in the Rakubun dashboard.'
             );
         }
 
         $endpoint = $this->api_base . '/chat/completions';
         
         $data = array(
-            'model' => 'gpt-4',
+            'model' => $config['model_article'] ?? 'gpt-4',
             'messages' => array(
                 array(
                     'role' => 'system',
@@ -46,8 +87,8 @@ class Rakubun_AI_OpenAI {
                     'content' => $prompt
                 )
             ),
-            'max_tokens' => $max_tokens,
-            'temperature' => 0.7
+            'max_tokens' => $max_tokens ?? $config['max_tokens'] ?? 2000,
+            'temperature' => $config['temperature'] ?? 0.7
         );
 
         $response = $this->make_request($endpoint, $data);
@@ -76,10 +117,12 @@ class Rakubun_AI_OpenAI {
      * Generate image using DALL-E
      */
     public function generate_image($prompt, $size = '1024x1024') {
-        if (empty($this->api_key)) {
+        $config = $this->get_openai_config();
+        
+        if (empty($config['api_key'])) {
             return array(
                 'success' => false,
-                'error' => 'OpenAI API key is not configured.'
+                'error' => 'OpenAI API key is not configured in the Rakubun dashboard.'
             );
         }
 
@@ -101,7 +144,7 @@ class Rakubun_AI_OpenAI {
         $endpoint = $this->api_base . '/images/generations';
         
         $data = array(
-            'model' => 'dall-e-3',
+            'model' => $config['model_image'] ?? 'dall-e-3',
             'prompt' => $prompt,
             'n' => 1,
             'size' => $size,
@@ -135,10 +178,12 @@ class Rakubun_AI_OpenAI {
      * Make API request
      */
     private function make_request($endpoint, $data) {
+        $config = $this->get_openai_config();
+        
         $args = array(
             'headers' => array(
                 'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $this->api_key,
+                'Authorization' => 'Bearer ' . $config['api_key'],
                 'User-Agent' => 'Rakubun-AI-WordPress-Plugin/1.0'
             ),
             'body' => json_encode($data),
