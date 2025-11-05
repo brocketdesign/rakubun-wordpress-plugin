@@ -55,6 +55,7 @@ class Rakurabu_AI_Content_Generator {
         $this->loader->add_action('admin_menu', $plugin_admin, 'add_plugin_admin_menu');
         $this->loader->add_action('wp_ajax_rakurabu_generate_article', $plugin_admin, 'ajax_generate_article');
         $this->loader->add_action('wp_ajax_rakurabu_generate_image', $plugin_admin, 'ajax_generate_image');
+        $this->loader->add_action('wp_ajax_rakurabu_create_payment_intent', $plugin_admin, 'ajax_create_payment_intent');
         $this->loader->add_action('wp_ajax_rakurabu_process_payment', $plugin_admin, 'ajax_process_payment');
         $this->loader->add_action('wp_ajax_rakurabu_get_credits', $plugin_admin, 'ajax_get_credits');
     }

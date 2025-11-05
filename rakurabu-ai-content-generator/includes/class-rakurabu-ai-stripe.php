@@ -10,9 +10,9 @@ class Rakurabu_AI_Stripe {
     private $secret_key;
 
     /**
-     * Stripe API base URL
+     * Stripe API base URL (constant for security)
      */
-    private $api_base = 'https://api.stripe.com/v1';
+    const API_BASE = 'https://api.stripe.com/v1';
 
     /**
      * Constructor
@@ -32,7 +32,7 @@ class Rakurabu_AI_Stripe {
             );
         }
 
-        $endpoint = $this->api_base . '/payment_intents';
+        $endpoint = self::API_BASE . '/payment_intents';
         
         $data = array(
             'amount' => $amount * 100, // Convert to cents
@@ -73,7 +73,7 @@ class Rakurabu_AI_Stripe {
             );
         }
 
-        $endpoint = $this->api_base . '/payment_intents/' . $payment_intent_id;
+        $endpoint = self::API_BASE . '/payment_intents/' . $payment_intent_id;
         
         $response = $this->make_request($endpoint, array(), 'GET');
 
@@ -108,7 +108,7 @@ class Rakurabu_AI_Stripe {
             );
         }
 
-        $endpoint = $this->api_base . '/checkout/sessions';
+        $endpoint = self::API_BASE . '/checkout/sessions';
         
         $data = array(
             'mode' => 'payment',

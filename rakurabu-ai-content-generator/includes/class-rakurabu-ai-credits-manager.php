@@ -60,6 +60,11 @@ class Rakurabu_AI_Credits_Manager {
         global $wpdb;
         $table_name = $wpdb->prefix . 'rakurabu_user_credits';
         
+        // Validate type parameter against whitelist to prevent SQL injection
+        if (!in_array($type, array('article', 'image'), true)) {
+            return false;
+        }
+        
         $column = $type === 'article' ? 'article_credits' : 'image_credits';
         
         $result = $wpdb->query($wpdb->prepare(
@@ -78,6 +83,11 @@ class Rakurabu_AI_Credits_Manager {
     public static function add_credits($user_id, $type = 'article', $amount = 1) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'rakurabu_user_credits';
+        
+        // Validate type parameter against whitelist to prevent SQL injection
+        if (!in_array($type, array('article', 'image'), true)) {
+            return false;
+        }
         
         $column = $type === 'article' ? 'article_credits' : 'image_credits';
         

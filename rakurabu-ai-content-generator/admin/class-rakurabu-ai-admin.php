@@ -33,7 +33,11 @@ class Rakurabu_AI_Admin {
      * Register the JavaScript for the admin area
      */
     public function enqueue_scripts() {
-        wp_enqueue_script($this->plugin_name, RAKURABU_AI_PLUGIN_URL . 'assets/js/admin.js', array('jquery'), $this->version, false);
+        // Enqueue Stripe.js library
+        wp_enqueue_script('stripe-js', 'https://js.stripe.com/v3/', array(), null, false);
+        
+        // Enqueue plugin script
+        wp_enqueue_script($this->plugin_name, RAKURABU_AI_PLUGIN_URL . 'assets/js/admin.js', array('jquery', 'stripe-js'), $this->version, false);
         
         // Localize script with data
         wp_localize_script($this->plugin_name, 'rakurabuAI', array(
@@ -182,7 +186,7 @@ class Rakurabu_AI_Admin {
 
         $prompt = isset($_POST['prompt']) ? sanitize_textarea_field($_POST['prompt']) : '';
         $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
-        $create_post = isset($_POST['create_post']) && $_POST['create_post'] === 'true';
+        $create_post = isset($_POST['create_post']) && ($_POST['create_post'] === 'true' || $_POST['create_post'] === '1');
 
         if (empty($prompt)) {
             wp_send_json_error(array('message' => 'Prompt is required.'));
@@ -244,7 +248,7 @@ class Rakurabu_AI_Admin {
 
         $prompt = isset($_POST['prompt']) ? sanitize_textarea_field($_POST['prompt']) : '';
         $size = isset($_POST['size']) ? sanitize_text_field($_POST['size']) : '1024x1024';
-        $save_to_media = isset($_POST['save_to_media']) && $_POST['save_to_media'] === 'true';
+        $save_to_media = isset($_POST['save_to_media']) && ($_POST['save_to_media'] === 'true' || $_POST['save_to_media'] === '1');
 
         if (empty($prompt)) {
             wp_send_json_error(array('message' => 'Prompt is required.'));
@@ -287,6 +291,56 @@ class Rakurabu_AI_Admin {
     }
 
     /**
+     * AJAX: Create payment intent
+     */
+    public function ajax_create_payment_intent() {
+        check_ajax_referer('rakurabu_ai_nonce', 'nonce');
+
+        $user_id = get_current_user_id();
+        
+        if (!$user_id) {
+            wp_send_json_error(array('message' => 'User not authenticated.'));
+        }
+
+        $credit_type = isset($_POST['credit_type']) ? sanitize_text_field($_POST['credit_type']) : '';
+
+        if (empty($credit_type)) {
+            wp_send_json_error(array('message' => 'Invalid request.'));
+        }
+
+        // Validate credit type
+        if (!in_array($credit_type, array('articles', 'images'), true)) {
+            wp_send_json_error(array('message' => 'Invalid credit type.'));
+        }
+
+        // Get pricing info
+        if ($credit_type === 'articles') {
+            $amount = floatval(get_option('rakurabu_ai_article_price', 5.00));
+            $credits = intval(get_option('rakurabu_ai_articles_per_purchase', 10));
+        } else {
+            $amount = floatval(get_option('rakurabu_ai_image_price', 2.00));
+            $credits = intval(get_option('rakurabu_ai_images_per_purchase', 20));
+        }
+
+        // Create payment intent
+        $stripe = new Rakurabu_AI_Stripe();
+        $result = $stripe->create_payment_intent($amount, 'usd', array(
+            'user_id' => $user_id,
+            'credit_type' => $credit_type,
+            'credits' => $credits
+        ));
+
+        if (!$result['success']) {
+            wp_send_json_error(array('message' => $result['error']));
+        }
+
+        wp_send_json_success(array(
+            'client_secret' => $result['client_secret'],
+            'payment_intent_id' => $result['payment_intent_id']
+        ));
+    }
+
+    /**
      * AJAX: Process payment
      */
     public function ajax_process_payment() {
@@ -305,6 +359,16 @@ class Rakurabu_AI_Admin {
             wp_send_json_error(array('message' => 'Invalid request.'));
         }
 
+        // Validate credit type
+        if (!in_array($credit_type, array('articles', 'images'), true)) {
+            wp_send_json_error(array('message' => 'Invalid credit type.'));
+        }
+
+        // Validate payment intent ID format (Stripe format: pi_...)
+        if (!preg_match('/^pi_[a-zA-Z0-9]+$/', $payment_intent_id)) {
+            wp_send_json_error(array('message' => 'Invalid payment intent ID format.'));
+        }
+
         // Verify payment with Stripe
         $stripe = new Rakurabu_AI_Stripe();
         $verification = $stripe->verify_payment($payment_intent_id);
@@ -313,14 +377,20 @@ class Rakurabu_AI_Admin {
             wp_send_json_error(array('message' => 'Payment verification failed.'));
         }
 
+        // Verify the payment amount and metadata match our expectations
+        $payment = $verification['payment'];
+        if (!isset($payment['metadata']['user_id']) || $payment['metadata']['user_id'] != $user_id) {
+            wp_send_json_error(array('message' => 'Payment metadata mismatch.'));
+        }
+
         // Add credits based on type
         if ($credit_type === 'articles') {
-            $credits_to_add = get_option('rakurabu_ai_articles_per_purchase', 10);
-            $amount = get_option('rakurabu_ai_article_price', 5.00);
+            $credits_to_add = intval(get_option('rakurabu_ai_articles_per_purchase', 10));
+            $amount = floatval(get_option('rakurabu_ai_article_price', 5.00));
             Rakurabu_AI_Credits_Manager::add_credits($user_id, 'article', $credits_to_add);
         } else {
-            $credits_to_add = get_option('rakurabu_ai_images_per_purchase', 20);
-            $amount = get_option('rakurabu_ai_image_price', 2.00);
+            $credits_to_add = intval(get_option('rakurabu_ai_images_per_purchase', 20));
+            $amount = floatval(get_option('rakurabu_ai_image_price', 2.00));
             Rakurabu_AI_Credits_Manager::add_credits($user_id, 'image', $credits_to_add);
         }
 

@@ -222,10 +222,55 @@
      * Create Payment Intent
      */
     function createPaymentIntent(paymentMethodId) {
-        // For simplicity, we'll simulate the payment process
-        // In production, you should create a proper payment intent on the server
-        
-        // Simulate payment verification
+        // First, create a payment intent on the server
+        $.ajax({
+            url: rakurabuAI.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'rakurabu_create_payment_intent',
+                nonce: rakurabuAI.nonce,
+                credit_type: currentPaymentType
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Confirm the payment with Stripe
+                    confirmPayment(response.data.client_secret, paymentMethodId, response.data.payment_intent_id);
+                } else {
+                    $('#rakurabu-payment-loading').hide();
+                    $('#rakurabu-payment-submit').prop('disabled', false);
+                    showError('#rakurabu-payment-error', response.data.message);
+                }
+            },
+            error: function() {
+                $('#rakurabu-payment-loading').hide();
+                $('#rakurabu-payment-submit').prop('disabled', false);
+                showError('#rakurabu-payment-error', 'Failed to create payment intent. Please try again.');
+            }
+        });
+    }
+
+    /**
+     * Confirm Payment with Stripe
+     */
+    function confirmPayment(clientSecret, paymentMethodId, paymentIntentId) {
+        stripe.confirmCardPayment(clientSecret, {
+            payment_method: paymentMethodId
+        }).then(function(result) {
+            if (result.error) {
+                $('#rakurabu-payment-loading').hide();
+                $('#rakurabu-payment-submit').prop('disabled', false);
+                showError('#rakurabu-payment-error', result.error.message);
+            } else {
+                // Payment succeeded, process on server
+                processPaymentSuccess(paymentIntentId);
+            }
+        });
+    }
+
+    /**
+     * Process successful payment
+     */
+    function processPaymentSuccess(paymentIntentId) {
         $.ajax({
             url: rakurabuAI.ajaxurl,
             type: 'POST',
@@ -233,7 +278,7 @@
                 action: 'rakurabu_process_payment',
                 nonce: rakurabuAI.nonce,
                 credit_type: currentPaymentType,
-                payment_intent_id: 'pi_' + Math.random().toString(36).substr(2, 9) // Mock payment ID
+                payment_intent_id: paymentIntentId
             },
             success: function(response) {
                 $('#rakurabu-payment-loading').hide();
