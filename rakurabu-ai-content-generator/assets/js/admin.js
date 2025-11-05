@@ -342,11 +342,54 @@
         const element = document.getElementById(elementId);
         const text = element.innerText;
         
-        navigator.clipboard.writeText(text).then(function() {
-            alert('Content copied to clipboard!');
-        }).catch(function(err) {
-            console.error('Failed to copy text: ', err);
-        });
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Content copied to clipboard!');
+            }).catch(function(err) {
+                console.error('Failed to copy text: ', err);
+                fallbackCopyTextToClipboard(text);
+            });
+        } else {
+            // Fallback for older browsers or HTTP
+            fallbackCopyTextToClipboard(text);
+        }
     };
+
+    /**
+     * Fallback copy method for older browsers
+     */
+    function fallbackCopyTextToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '2em';
+        textArea.style.height = '2em';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                alert('Content copied to clipboard!');
+            } else {
+                alert('Failed to copy content. Please copy manually.');
+            }
+        } catch (err) {
+            console.error('Fallback: Failed to copy', err);
+            alert('Failed to copy content. Please copy manually.');
+        }
+        
+        document.body.removeChild(textArea);
+    }
 
 })(jQuery);

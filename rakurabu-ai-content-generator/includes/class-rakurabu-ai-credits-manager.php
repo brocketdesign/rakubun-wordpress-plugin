@@ -65,14 +65,22 @@ class Rakurabu_AI_Credits_Manager {
             return false;
         }
         
-        $column = $type === 'article' ? 'article_credits' : 'image_credits';
-        
-        $result = $wpdb->query($wpdb->prepare(
-            "UPDATE $table_name SET $column = $column - %d WHERE user_id = %d AND $column >= %d",
-            $amount,
-            $user_id,
-            $amount
-        ));
+        // Use separate queries for each type to avoid dynamic column names
+        if ($type === 'article') {
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table_name SET article_credits = article_credits - %d WHERE user_id = %d AND article_credits >= %d",
+                $amount,
+                $user_id,
+                $amount
+            ));
+        } else {
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table_name SET image_credits = image_credits - %d WHERE user_id = %d AND image_credits >= %d",
+                $amount,
+                $user_id,
+                $amount
+            ));
+        }
         
         return $result > 0;
     }
@@ -89,16 +97,23 @@ class Rakurabu_AI_Credits_Manager {
             return false;
         }
         
-        $column = $type === 'article' ? 'article_credits' : 'image_credits';
-        
         // Ensure user has a credits record
         $credits = self::get_user_credits($user_id);
         
-        $result = $wpdb->query($wpdb->prepare(
-            "UPDATE $table_name SET $column = $column + %d WHERE user_id = %d",
-            $amount,
-            $user_id
-        ));
+        // Use separate queries for each type to avoid dynamic column names
+        if ($type === 'article') {
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table_name SET article_credits = article_credits + %d WHERE user_id = %d",
+                $amount,
+                $user_id
+            ));
+        } else {
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table_name SET image_credits = image_credits + %d WHERE user_id = %d",
+                $amount,
+                $user_id
+            ));
+        }
         
         return $result > 0;
     }

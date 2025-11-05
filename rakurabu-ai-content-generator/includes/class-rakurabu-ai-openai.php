@@ -175,11 +175,14 @@ class Rakurabu_AI_OpenAI {
             );
         }
 
-        // Extract filename from URL or generate one
+        // Extract and sanitize filename from URL
         $filename = basename(parse_url($image_url, PHP_URL_PATH));
         if (empty($filename) || strpos($filename, '.') === false) {
             $filename = 'dalle-image-' . time() . '.png';
         }
+        
+        // Sanitize filename to prevent path traversal
+        $filename = sanitize_file_name($filename);
 
         $file_array = array(
             'name' => $filename,

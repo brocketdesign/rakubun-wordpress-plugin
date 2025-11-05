@@ -365,7 +365,7 @@ class Rakurabu_AI_Admin {
         }
 
         // Validate payment intent ID format (Stripe format: pi_...)
-        if (!preg_match('/^pi_[a-zA-Z0-9]+$/', $payment_intent_id)) {
+        if (!preg_match('/^pi_[a-zA-Z0-9_]+$/', $payment_intent_id)) {
             wp_send_json_error(array('message' => 'Invalid payment intent ID format.'));
         }
 

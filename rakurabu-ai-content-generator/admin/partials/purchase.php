@@ -33,7 +33,7 @@ $images_per_purchase = get_option('rakurabu_ai_images_per_purchase', 20);
                     <li>High-quality content</li>
                     <li>Auto-create draft posts</li>
                 </ul>
-                <button class="button button-primary button-large" onclick="rakurabuInitiatePayment('articles', <?php echo $article_price; ?>)">
+                <button class="button button-primary button-large" onclick="rakurabuInitiatePayment('articles', <?php echo esc_attr($article_price); ?>)">
                     Purchase Now
                 </button>
             </div>
@@ -48,7 +48,7 @@ $images_per_purchase = get_option('rakurabu_ai_images_per_purchase', 20);
                     <li>High-quality images</li>
                     <li>Multiple sizes available</li>
                 </ul>
-                <button class="button button-primary button-large" onclick="rakurabuInitiatePayment('images', <?php echo $image_price; ?>)">
+                <button class="button button-primary button-large" onclick="rakurabuInitiatePayment('images', <?php echo esc_attr($image_price); ?>)">
                     Purchase Now
                 </button>
             </div>
