@@ -27,6 +27,14 @@ if (!defined('WPINC')) {
                 <p>画像生成クレジット残高</p>
             </div>
         </div>
+
+        <div class="credits-box">
+            <div class="credits-icon">🔄</div>
+            <div class="credits-info">
+                <h2><?php echo esc_html($credits['rewrite_credits'] ?? 0); ?></h2>
+                <p>リライトクレジット残高</p>
+            </div>
+        </div>
     </div>
 
     <div class="rakubun-quick-actions">
@@ -37,6 +45,9 @@ if (!defined('WPINC')) {
             </a>
             <a href="<?php echo admin_url('admin.php?page=rakubun-ai-generate-image'); ?>" class="button button-primary button-large">
                 🎨 画像を生成
+            </a>
+            <a href="<?php echo admin_url('admin.php?page=rakubun-ai-auto-rewrite'); ?>" class="button button-primary button-large">
+                🔄 自動リライト
             </a>
             <a href="<?php echo admin_url('admin.php?page=rakubun-ai-purchase'); ?>" class="button button-secondary button-large">
                 💳 クレジット購入
@@ -230,6 +241,48 @@ if (!defined('WPINC')) {
         </ol>
     </div>
 </div>
+
+<?php
+// Temporary debug information - remove this after fixing the issue
+if (defined('WP_DEBUG') && WP_DEBUG) {
+    global $wpdb;
+    $debug_user_id = get_current_user_id();
+    $debug_table_name = $wpdb->prefix . 'rakubun_user_credits';
+    
+    echo "<div style='background: #f0f0f0; padding: 20px; margin: 20px 0; border: 1px solid #ccc;'>";
+    echo "<h3>🐛 Debug Information (will be removed)</h3>";
+    echo "<p><strong>User ID:</strong> " . $debug_user_id . "</p>";
+    
+    // Check user record
+    $debug_user_record = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM $debug_table_name WHERE user_id = %d", 
+        $debug_user_id
+    ));
+    
+    if ($debug_user_record) {
+        echo "<p><strong>Database Record:</strong></p>";
+        echo "<ul>";
+        echo "<li>Article Credits: " . $debug_user_record->article_credits . "</li>";
+        echo "<li>Image Credits: " . $debug_user_record->image_credits . "</li>";
+        echo "<li>Rewrite Credits: " . ($debug_user_record->rewrite_credits ?? 'Column missing') . "</li>";
+        echo "<li>Created: " . $debug_user_record->created_at . "</li>";
+        echo "<li>Updated: " . $debug_user_record->updated_at . "</li>";
+        echo "</ul>";
+    } else {
+        echo "<p><strong>No database record found for this user</strong></p>";
+    }
+    
+    // Show method result
+    $debug_credits = Rakubun_AI_Credits_Manager::get_user_credits($debug_user_id);
+    echo "<p><strong>get_user_credits() returns:</strong></p>";
+    echo "<ul>";
+    echo "<li>Article Credits: " . $debug_credits['article_credits'] . "</li>";
+    echo "<li>Image Credits: " . $debug_credits['image_credits'] . "</li>";
+    echo "<li>Rewrite Credits: " . $debug_credits['rewrite_credits'] . "</li>";
+    echo "</ul>";
+    echo "</div>";
+}
+?>
 
 <!-- Debug Info (remove in production) -->
 <script>

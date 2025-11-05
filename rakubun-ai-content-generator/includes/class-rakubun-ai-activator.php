@@ -19,6 +19,7 @@ class Rakubun_AI_Activator {
             user_id bigint(20) NOT NULL,
             article_credits int(11) NOT NULL DEFAULT 3,
             image_credits int(11) NOT NULL DEFAULT 5,
+            rewrite_credits int(11) NOT NULL DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -64,6 +65,33 @@ class Rakubun_AI_Activator {
         ) $charset_collate;";
         
         dbDelta($sql_content);
+        
+        // Create rewrite statistics table
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        $sql_rewrite = "CREATE TABLE IF NOT EXISTS $rewrite_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            user_id bigint(20) NOT NULL,
+            post_id bigint(20) NOT NULL,
+            post_title varchar(255),
+            original_content longtext,
+            rewritten_content longtext,
+            character_change int(11) DEFAULT 0,
+            seo_improvements int(11) DEFAULT 0,
+            status varchar(50) NOT NULL DEFAULT 'completed',
+            rewrite_date datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY user_id (user_id),
+            KEY post_id (post_id),
+            KEY rewrite_date (rewrite_date)
+        ) $charset_collate;";
+        
+        dbDelta($sql_rewrite);
+        
+        // Migration: Add rewrite_credits column if it doesn't exist
+        $rewrite_column_exists = $wpdb->get_results("SHOW COLUMNS FROM $table_name LIKE 'rewrite_credits'");
+        if (empty($rewrite_column_exists)) {
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN rewrite_credits int(11) NOT NULL DEFAULT 0 AFTER image_credits");
+        }
         
         // Migration: Add attachment_id column if it doesn't exist
         $column_exists = $wpdb->get_results("SHOW COLUMNS FROM $content_table LIKE 'attachment_id'");

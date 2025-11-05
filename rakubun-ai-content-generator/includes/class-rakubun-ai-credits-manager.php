@@ -11,10 +11,21 @@ class Rakubun_AI_Credits_Manager {
         global $wpdb;
         $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
+        // Try to get credits with rewrite_credits column, fallback if column doesn't exist
         $credits = $wpdb->get_row($wpdb->prepare(
-            "SELECT article_credits, image_credits FROM $table_name WHERE user_id = %d",
+            "SELECT article_credits, image_credits, 
+             COALESCE(rewrite_credits, 0) as rewrite_credits 
+             FROM $table_name WHERE user_id = %d",
             $user_id
         ));
+        
+        // If query failed (maybe rewrite_credits column doesn't exist), try without it
+        if ($wpdb->last_error) {
+            $credits = $wpdb->get_row($wpdb->prepare(
+                "SELECT article_credits, image_credits FROM $table_name WHERE user_id = %d",
+                $user_id
+            ));
+        }
         
         // If user doesn't have credits record, create one with free credits
         if (!$credits) {
@@ -23,20 +34,23 @@ class Rakubun_AI_Credits_Manager {
                 array(
                     'user_id' => $user_id,
                     'article_credits' => 3,
-                    'image_credits' => 5
+                    'image_credits' => 5,
+                    'rewrite_credits' => 0
                 ),
-                array('%d', '%d', '%d')
+                array('%d', '%d', '%d', '%d')
             );
             
             return array(
                 'article_credits' => 3,
-                'image_credits' => 5
+                'image_credits' => 5,
+                'rewrite_credits' => 0
             );
         }
         
         return array(
             'article_credits' => (int) $credits->article_credits,
-            'image_credits' => (int) $credits->image_credits
+            'image_credits' => (int) $credits->image_credits,
+            'rewrite_credits' => (int) ($credits->rewrite_credits ?? 0)
         );
     }
 
@@ -48,8 +62,12 @@ class Rakubun_AI_Credits_Manager {
         
         if ($type === 'article') {
             return $credits['article_credits'] > 0;
-        } else {
+        } elseif ($type === 'image') {
             return $credits['image_credits'] > 0;
+        } elseif ($type === 'rewrite') {
+            return $credits['rewrite_credits'] > 0;
+        } else {
+            return false;
         }
     }
 
@@ -61,7 +79,7 @@ class Rakubun_AI_Credits_Manager {
         $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
         // Validate type parameter against whitelist to prevent SQL injection
-        if (!in_array($type, array('article', 'image'), true)) {
+        if (!in_array($type, array('article', 'image', 'rewrite'), true)) {
             return false;
         }
         
@@ -73,9 +91,16 @@ class Rakubun_AI_Credits_Manager {
                 $user_id,
                 $amount
             ));
-        } else {
+        } elseif ($type === 'image') {
             $result = $wpdb->query($wpdb->prepare(
                 "UPDATE $table_name SET image_credits = image_credits - %d WHERE user_id = %d AND image_credits >= %d",
+                $amount,
+                $user_id,
+                $amount
+            ));
+        } else { // rewrite
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table_name SET rewrite_credits = rewrite_credits - %d WHERE user_id = %d AND rewrite_credits >= %d",
                 $amount,
                 $user_id,
                 $amount
@@ -93,7 +118,7 @@ class Rakubun_AI_Credits_Manager {
         $table_name = $wpdb->prefix . 'rakubun_user_credits';
         
         // Validate type parameter against whitelist to prevent SQL injection
-        if (!in_array($type, array('article', 'image'), true)) {
+        if (!in_array($type, array('article', 'image', 'rewrite'), true)) {
             return false;
         }
         
@@ -107,9 +132,15 @@ class Rakubun_AI_Credits_Manager {
                 $amount,
                 $user_id
             ));
-        } else {
+        } elseif ($type === 'image') {
             $result = $wpdb->query($wpdb->prepare(
                 "UPDATE $table_name SET image_credits = image_credits + %d WHERE user_id = %d",
+                $amount,
+                $user_id
+            ));
+        } else { // rewrite
+            $result = $wpdb->query($wpdb->prepare(
+                "UPDATE $table_name SET rewrite_credits = rewrite_credits + %d WHERE user_id = %d",
                 $amount,
                 $user_id
             ));
@@ -287,5 +318,78 @@ class Rakubun_AI_Credits_Manager {
         ));
         
         return $result;
+    }
+
+    /**
+     * Get rewrite statistics for user
+     */
+    public static function get_rewrite_statistics($user_id) {
+        global $wpdb;
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        
+        // Get total rewrites count
+        $total_rewrites = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $rewrite_table WHERE user_id = %d",
+            $user_id
+        ));
+        
+        // Get total character changes
+        $characters_added = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(character_change) FROM $rewrite_table WHERE user_id = %d AND character_change > 0",
+            $user_id
+        ));
+        
+        // Get total SEO improvements
+        $seo_improvements = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(seo_improvements) FROM $rewrite_table WHERE user_id = %d",
+            $user_id
+        ));
+        
+        // Get recent rewrites
+        $recent_rewrites = $wpdb->get_results($wpdb->prepare(
+            "SELECT r.*, p.post_title 
+             FROM $rewrite_table r 
+             LEFT JOIN {$wpdb->posts} p ON r.post_id = p.ID 
+             WHERE r.user_id = %d 
+             ORDER BY r.rewrite_date DESC 
+             LIMIT 10",
+            $user_id
+        ));
+        
+        return array(
+            'total_rewrites' => (int) $total_rewrites,
+            'characters_added' => (int) $characters_added,
+            'seo_improvements' => (int) $seo_improvements,
+            'recent_rewrites' => $recent_rewrites
+        );
+    }
+
+    /**
+     * Record a rewrite activity
+     */
+    public static function record_rewrite($user_id, $post_id, $original_content, $rewritten_content, $seo_improvements = 0) {
+        global $wpdb;
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        
+        $post = get_post($post_id);
+        $character_change = strlen($rewritten_content) - strlen($original_content);
+        
+        $result = $wpdb->insert(
+            $rewrite_table,
+            array(
+                'user_id' => $user_id,
+                'post_id' => $post_id,
+                'post_title' => $post ? $post->post_title : '',
+                'original_content' => $original_content,
+                'rewritten_content' => $rewritten_content,
+                'character_change' => $character_change,
+                'seo_improvements' => $seo_improvements,
+                'status' => 'completed',
+                'rewrite_date' => current_time('mysql')
+            ),
+            array('%d', '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s')
+        );
+        
+        return $result !== false;
     }
 }

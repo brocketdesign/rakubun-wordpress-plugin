@@ -102,6 +102,15 @@ class Rakubun_AI_Admin {
 
         add_submenu_page(
             'rakubun-ai-content',
+            '自動リライト',
+            '自動リライト',
+            'edit_posts',
+            'rakubun-ai-auto-rewrite',
+            array($this, 'display_auto_rewrite_page')
+        );
+
+        add_submenu_page(
+            'rakubun-ai-content',
             'クレジット購入',
             'クレジット購入',
             'edit_posts',
@@ -150,6 +159,21 @@ class Rakubun_AI_Admin {
         $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
         
         include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/generate-image.php';
+    }
+
+    /**
+     * Display auto rewrite page
+     */
+    public function display_auto_rewrite_page() {
+        $user_id = get_current_user_id();
+        $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
+        
+        // Get rewriting statistics
+        $rewrite_stats = Rakubun_AI_Credits_Manager::get_rewrite_statistics($user_id);
+        $total_posts = wp_count_posts('post')->publish;
+        $rewrite_schedule = get_option('rakubun_ai_rewrite_schedule', array());
+        
+        include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/auto-rewrite.php';
     }
 
     /**
@@ -336,7 +360,8 @@ class Rakubun_AI_Admin {
         }
 
         // Validate credit type
-        if (!in_array($credit_type, array('articles', 'images'), true)) {
+        $valid_types = array('articles', 'images', 'rewrite_starter', 'rewrite_standard', 'rewrite_premium', 'rewrite_enterprise');
+        if (!in_array($credit_type, $valid_types, true)) {
             wp_send_json_error(array('message' => 'Invalid credit type.'));
         }
 
@@ -344,9 +369,25 @@ class Rakubun_AI_Admin {
         if ($credit_type === 'articles') {
             $amount = intval(get_option('rakubun_ai_article_price', 750));
             $credits = intval(get_option('rakubun_ai_articles_per_purchase', 10));
-        } else {
+        } elseif ($credit_type === 'images') {
             $amount = intval(get_option('rakubun_ai_image_price', 300));
             $credits = intval(get_option('rakubun_ai_images_per_purchase', 20));
+        } else {
+            // Handle rewrite packages
+            $rewrite_packages = array(
+                'rewrite_starter' => array('rewrites' => 50, 'price' => 3000),
+                'rewrite_standard' => array('rewrites' => 150, 'price' => 7500),
+                'rewrite_premium' => array('rewrites' => 300, 'price' => 12000),
+                'rewrite_enterprise' => array('rewrites' => 500, 'price' => 17500)
+            );
+            
+            if (isset($rewrite_packages[$credit_type])) {
+                $package = $rewrite_packages[$credit_type];
+                $amount = $package['price'];
+                $credits = $package['rewrites'];
+            } else {
+                wp_send_json_error(array('message' => 'Invalid rewrite package type.'));
+            }
         }
 
         // Create payment intent
@@ -387,7 +428,8 @@ class Rakubun_AI_Admin {
         }
 
         // Validate credit type
-        if (!in_array($credit_type, array('articles', 'images'), true)) {
+        $valid_types = array('articles', 'images', 'rewrite_starter', 'rewrite_standard', 'rewrite_premium', 'rewrite_enterprise');
+        if (!in_array($credit_type, $valid_types, true)) {
             wp_send_json_error(array('message' => 'Invalid credit type.'));
         }
 
@@ -415,10 +457,27 @@ class Rakubun_AI_Admin {
             $credits_to_add = intval(get_option('rakubun_ai_articles_per_purchase', 10));
             $amount = intval(get_option('rakubun_ai_article_price', 750));
             Rakubun_AI_Credits_Manager::add_credits($user_id, 'article', $credits_to_add);
-        } else {
+        } elseif ($credit_type === 'images') {
             $credits_to_add = intval(get_option('rakubun_ai_images_per_purchase', 20));
             $amount = intval(get_option('rakubun_ai_image_price', 300));
             Rakubun_AI_Credits_Manager::add_credits($user_id, 'image', $credits_to_add);
+        } else {
+            // Handle rewrite packages
+            $rewrite_packages = array(
+                'rewrite_starter' => array('rewrites' => 50, 'price' => 3000),
+                'rewrite_standard' => array('rewrites' => 150, 'price' => 7500),
+                'rewrite_premium' => array('rewrites' => 300, 'price' => 12000),
+                'rewrite_enterprise' => array('rewrites' => 500, 'price' => 17500)
+            );
+            
+            if (isset($rewrite_packages[$credit_type])) {
+                $package = $rewrite_packages[$credit_type];
+                $credits_to_add = $package['rewrites'];
+                $amount = $package['price'];
+                Rakubun_AI_Credits_Manager::add_credits($user_id, 'rewrite', $credits_to_add);
+            } else {
+                wp_send_json_error(array('message' => 'Invalid rewrite package type.'));
+            }
         }
 
         // Log transaction

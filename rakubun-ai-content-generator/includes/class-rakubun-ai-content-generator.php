@@ -38,6 +38,7 @@ class Rakubun_AI_Content_Generator {
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-loader.php';
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-credits-manager.php';
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-openai.php';
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-auto-rewriter.php';
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-stripe.php';
         require_once RAKUBUN_AI_PLUGIN_DIR . 'admin/class-rakubun-ai-admin.php';
 
@@ -60,6 +61,9 @@ class Rakubun_AI_Content_Generator {
         $this->loader->add_action('wp_ajax_rakubun_get_credits', $plugin_admin, 'ajax_get_credits');
         $this->loader->add_action('wp_ajax_rakubun_regenerate_image', $plugin_admin, 'ajax_regenerate_image');
         $this->loader->add_action('wp_ajax_rakubun_get_analytics', $plugin_admin, 'ajax_get_analytics');
+        
+        // Add custom cron schedules
+        $this->loader->add_filter('cron_schedules', $this, 'add_custom_cron_schedules');
     }
 
     /**
@@ -95,5 +99,20 @@ class Rakubun_AI_Content_Generator {
      */
     public function get_version() {
         return $this->version;
+    }
+
+    /**
+     * Add custom cron schedules for auto-rewriting
+     */
+    public function add_custom_cron_schedules($schedules) {
+        $schedules['weekly'] = array(
+            'interval' => 604800, // 1 week
+            'display' => __('Weekly')
+        );
+        $schedules['monthly'] = array(
+            'interval' => 2635200, // 1 month (approximately)
+            'display' => __('Monthly')
+        );
+        return $schedules;
     }
 }
