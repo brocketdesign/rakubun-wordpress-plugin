@@ -309,34 +309,94 @@ class Rakubun_AI_Admin {
 
         $prompt = isset($_POST['prompt']) ? sanitize_textarea_field($_POST['prompt']) : '';
         $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
+        $language = isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'ja';
+        $content_length = isset($_POST['content_length']) ? sanitize_text_field($_POST['content_length']) : 'medium';
+        $tone = isset($_POST['tone']) ? sanitize_text_field($_POST['tone']) : 'neutral';
+        $focus_keywords = isset($_POST['focus_keywords']) ? sanitize_textarea_field($_POST['focus_keywords']) : '';
         $create_post = isset($_POST['create_post']) && ($_POST['create_post'] === 'true' || $_POST['create_post'] === '1');
+        $generate_tags = isset($_POST['generate_tags']) && ($_POST['generate_tags'] === 'true' || $_POST['generate_tags'] === '1');
+        $categories = isset($_POST['categories']) ? array_map('intval', (array)$_POST['categories']) : array();
 
         if (empty($prompt)) {
             wp_send_json_error(array('message' => 'Prompt is required.'));
         }
 
+        // Map content length to max_tokens
+        $max_tokens_map = array(
+            'short' => 800,
+            'medium' => 1500,
+            'long' => 2500
+        );
+        $max_tokens = isset($max_tokens_map[$content_length]) ? $max_tokens_map[$content_length] : 1500;
+
+        // Enhance prompt with tone and focus keywords
+        $enhanced_prompt = $prompt;
+        
+        // Add tone instruction
+        $tone_instructions = array(
+            'formal' => '\nトーン: フォーマルでプロフェッショナルな言語を使用してください。',
+            'trustworthy' => '\nトーン: 権威的で信頼できる、専門的な知識を示す言語を使用してください。',
+            'friendly' => '\nトーン: 親しみやすく会話的な言語を使用してください。',
+            'witty' => '\nトーン: 会話的で楽しく、ユーモアを交えた言語を使用してください。'
+        );
+        
+        if (isset($tone_instructions[$tone])) {
+            $enhanced_prompt .= $tone_instructions[$tone];
+        }
+        
+        // Add focus keywords instruction if provided
+        if (!empty($focus_keywords)) {
+            $enhanced_prompt .= '\n\nフォーカスキーワード: ' . $focus_keywords . '\n記事に自然に組み込んでください。';
+        }
+
         // Generate article
         $openai = new Rakubun_AI_OpenAI();
-        $result = $openai->generate_article($prompt);
+        $result = $openai->generate_article($enhanced_prompt, $max_tokens, $language);
 
         if (!$result['success']) {
             wp_send_json_error(array('message' => $result['error']));
+        }
+
+        // Generate tags if requested
+        $tags = array();
+        if ($generate_tags) {
+            $tag_result = $openai->generate_tags(
+                !empty($result['title']) ? $result['title'] : $title,
+                $result['content'],
+                5,
+                $language
+            );
+            
+            if ($tag_result['success']) {
+                $tags = $tag_result['tags'];
+            }
         }
 
         // Deduct credit
         Rakubun_AI_Credits_Manager::deduct_credits($user_id, 'article', 1);
 
         $post_id = 0;
+        // Use provided title, generated title, or fallback
+        $final_title = !empty($title) ? $title : (!empty($result['title']) ? $result['title'] : 'AI Generated Article - ' . date('Y-m-d H:i:s'));
         
         // Create post if requested
         if ($create_post) {
-            $post_title = !empty($title) ? $title : 'AI Generated Article - ' . date('Y-m-d H:i:s');
             $post_id = wp_insert_post(array(
-                'post_title' => $post_title,
+                'post_title' => $final_title,
                 'post_content' => $result['content'],
                 'post_status' => 'draft',
                 'post_author' => $user_id
             ));
+
+            // Assign categories if post was created
+            if ($post_id && !empty($categories)) {
+                wp_set_post_categories($post_id, $categories, false);
+            }
+
+            // Assign tags if post was created
+            if ($post_id && !empty($tags)) {
+                wp_set_post_terms($post_id, $tags, 'post_tag', false);
+            }
         }
 
         // Log the generation
@@ -347,7 +407,10 @@ class Rakubun_AI_Admin {
 
         wp_send_json_success(array(
             'content' => $result['content'],
+            'title' => $final_title,
             'post_id' => $post_id,
+            'tags' => $tags,
+            'categories' => $categories,
             'credits' => $credits
         ));
     }

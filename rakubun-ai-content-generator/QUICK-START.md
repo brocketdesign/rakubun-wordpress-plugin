@@ -1,139 +1,146 @@
-# Quick Start Guide
+# クイックスタートガイド
 
-Get up and running with Rakubun AI Content Generator in 5 minutes!
+Rakubun AI コンテンツジェネレーターを 5 分で始めましょう！
 
-## Step 1: Install the Plugin (1 minute)
+## ステップ1: プラグインをインストール（1分）
 
-1. Upload `rakubun-ai-content-generator` folder to `/wp-content/plugins/`
-2. Go to **Plugins** in WordPress admin
-3. Click **Activate** on "Rakubun AI Content Generator"
+1. [GitHub リリースページ](https://github.com/brocketdesign/rakubun-wordpress-plugin/releases) からプラグインをダウンロード
+2. ダウンロードしたファイルを `/wp-content/plugins/` にアップロード
+3. WordPressの管理画面から **プラグイン** にアクセス
+4. 「Rakubun AI Content Generator」で **有効化** をクリック
 
-## Step 2: Get API Keys (2 minutes)
+## ステップ2: ダッシュボード登録（1分）
 
-### OpenAI API Key
-1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Click **Create new secret key**
-3. Copy the key (save it somewhere safe!)
+1. WordPressの管理画面で **AI コンテンツ → 設定** にアクセス
+2. **プラグイン登録** ボタンをクリック
+3. プラグインが自動的にダッシュボードに登録される
+4. ページをリロードして接続を確認
 
-### Stripe Keys (for payments)
-1. Visit [Stripe Dashboard](https://dashboard.stripe.com/test/apikeys)
-2. Copy **Publishable key** (pk_test_...)
-3. Copy **Secret key** (sk_test_...)
+💡 **ヒント**: 数秒かかる場合があります。ページがリロードされるまで待ってください。
 
-💡 **Tip**: Use test keys first to try it out!
+## ステップ3: 外部ダッシュボード設定（2分）
 
-## Step 3: Configure Plugin (1 minute)
+1. [Rakubun 管理ダッシュボード](https://app.rakubun.com) にアクセス
+2. [OpenAI APIキー](https://platform.openai.com/api-keys) を取得して登録
+3. [Stripe テストキー](https://dashboard.stripe.com/test/apikeys) を取得して登録
+   - 公開キー（`pk_test_...`）
+   - 秘密キー（`sk_test_...`）
+4. クレジットパッケージ価格を設定（デフォルトで OK）
 
-1. Go to **AI Content → Settings** in WordPress
-2. Paste your OpenAI API key
-3. Paste your Stripe keys
-4. Click **Save Settings**
+💡 **ヒント**: テストモードキーを使用してまずテストしてください。
 
-## Step 4: Generate Your First Article (1 minute)
+## ステップ4: 最初の記事を生成（1分）
 
-1. Go to **AI Content → Generate Article**
-2. Enter a prompt like: "Write a blog post about morning routines"
-3. Click **Generate Article**
-4. Wait 30-60 seconds
-5. Your article appears! 🎉
+1. **AI コンテンツ → 記事を生成** にアクセス
+2. プロンプトを入力（例：「朝の瞑想の効果について書いてください」）
+3. **記事を生成する** をクリック
+4. 30～60秒待機
+5. 記事が生成されます！ 🎉
 
-## Step 5: Generate Your First Image (30 seconds)
+## ステップ5: 最初の画像を生成（1分）
 
-1. Go to **AI Content → Generate Image**
-2. Enter a prompt like: "A peaceful mountain landscape at sunset"
-3. Select image size
-4. Click **Generate Image**
-5. Wait 20-40 seconds
-6. Your image appears! 🖼️
-
----
-
-## Your Free Credits
-
-✨ You start with:
-- **3 free article credits**
-- **5 free image credits**
-
-Check your balance anytime on the **Dashboard**!
+1. **AI コンテンツ → 画像を生成** にアクセス
+2. 画像説明を入力（例：「美しい夕焼けのビーチ」）
+3. 画像サイズを選択
+4. **画像を生成する** をクリック
+5. 20～40秒待機
+6. 画像が生成されます！ 🖼️
 
 ---
 
-## Common First-Time Issues
+## 無料クレジット
 
-### "OpenAI API key is not configured"
-→ Make sure you pasted the key correctly in Settings (no extra spaces!)
+✨ 初回ユーザーは：
+- **記事生成クレジット：3個**
+- **画像生成クレジット：5個**
 
-### Generation takes too long or times out
-→ This is normal for the first request! GPT-4 can take up to 60 seconds.
-
-### "Insufficient credits"
-→ You've used your free credits! Go to **Purchase Credits** to buy more.
-
-### Payment not working
-→ Make sure you're using test mode keys from Stripe during testing.
+**ダッシュボード** でいつでも残高を確認できます。
 
 ---
 
-## Writing Better Prompts
+## よくある初期問題
 
-### For Articles ✍️
+### 「プラグインがダッシュボードに接続されていません」
+→ **AI コンテンツ → 設定** でプラグイン登録を実行
 
-**Good Prompt**:
-```
-Write a comprehensive guide about starting a vegetable garden for beginners. 
-Include sections on choosing the right location, preparing soil, selecting 
-vegetables, and maintenance tips. Make it friendly and encouraging.
-```
+### 「OpenAI APIキーが設定されていません」
+→ Rakubun ダッシュボードで OpenAI キーが設定されているか確認
 
-**Not So Good**:
-```
-gardening
-```
+### 「Stripe秘密キーが設定されていません」
+→ Rakubun ダッシュボールで Stripe キー（公開キーと秘密キー）が設定されているか確認
 
-### For Images 🎨
+### 生成に時間がかかる/タイムアウトする
+→ 正常です！ GPT-4は最初のリクエストで最大60秒かかることがあります
 
-**Good Prompt**:
-```
-A modern home office with a large window, wooden desk, comfortable chair, 
-laptop, plants, and natural lighting. Minimalist style, warm tones.
-```
+### 「クレジット不足」と表示される
+→ **AI コンテンツ → クレジット購入** からクレジットを購入してください
 
-**Not So Good**:
-```
-office
-```
-
-💡 **Tip**: Be specific! The more details you provide, the better the results.
+### 支払いが機能しない
+→ テストモードでは Stripe テストキーが設定されていることを確認
 
 ---
 
-## Next Steps
+## より良いプロンプトの書き方
 
-1. ✅ Try generating a few articles with different prompts
-2. ✅ Test image generation with various descriptions
-3. ✅ Create a real blog post using generated content
-4. ✅ Adjust pricing in settings if needed
-5. ✅ Switch to live Stripe keys when ready for production
+### 記事のプロンプト ✍️
+
+**良いプロンプト例**:
+```
+初心者向け野菜ガーデニング完全ガイドを書いてください。
+適切な場所選び、土壌準備、野菜選択、メンテナンスのコツを含めてください。
+親切で励ましの多いトーンで、約1000字でお願いします。
+```
+
+**あまり良くないプロンプト例**:
+```
+ガーデニング
+```
+
+### 画像のプロンプト 🎨
+
+**良いプロンプト例**:
+```
+大きな窓を持つ現代的なホームオフィス。
+木製のデスク、快適な椅子、ノートパソコン、観葉植物、自然光。
+ミニマリストスタイル、暖色系。
+```
+
+**あまり良くないプロンプト例**:
+```
+オフィス
+```
+
+💡 **ヒント**: 具体的に！ 詳しく説明するほど、より良い結果が得られます。
 
 ---
 
-## Need Help?
+## 次のステップ
 
-- 📖 Read the [full README](README.md)
-- 🔧 Check [INSTALL.md](INSTALL.md) for detailed setup
-- 🚀 See [FEATURES.md](FEATURES.md) for all capabilities
-- 🐛 Found a bug? Report it on [GitHub](https://github.com/brocketdesign/rakubun-wordpress-plugin)
-
----
-
-## Quick Tips
-
-1. **Save Money**: Start with specific, detailed prompts to get better results on first try
-2. **Test First**: Always test in a development environment before going live
-3. **Monitor Usage**: Check your OpenAI usage dashboard regularly
-4. **Backup**: Generated content is logged in the database, but always backup important content
-5. **Be Patient**: AI generation takes time - don't refresh the page!
+1. ✅ さまざまなプロンプトで複数の記事を生成してみる
+2. ✅ さまざまな説明で画像生成をテスト
+3. ✅ 生成されたコンテンツを使用して実際のブログ記事を作成
+4. ✅ 必要に応じて設定内容を調整
+5. ✅ テストが完了したら本番用 Stripe キーに切り替え
 
 ---
 
-Happy content creating! 🚀
+## ヘルプが必要ですか？
+
+- 📖 [完全なREADME](README.md)を読む
+- 🔧 [詳細なINSTALLガイド](INSTALL.md)を確認
+- 🚀 [全機能](FEATURES.md)を見る
+- 🐛 バグを発見したら [GitHub](https://github.com/brocketdesign/rakubun-wordpress-plugin) で報告
+
+---
+
+## クイックチップス
+
+1. **お金を節約する**: 最初から具体的で詳しいプロンプトを使用すると、最初の試行でより良い結果が得られます
+2. **テストから始める**: 本番環境で運用する前に必ず開発環境でテストしてください
+3. **使用状況を監視する**: OpenAI の使用ダッシュボードを定期的にチェック
+4. **バックアップを取る**: 生成されたコンテンツはデータベースに記録されていますが、重要なコンテンツは必ずバックアップしてください
+5. **焦らず待つ**: AI 生成は時間がかかります。ページを更新しないでください！
+
+---
+
+楽しいコンテンツ生成を！ 🚀

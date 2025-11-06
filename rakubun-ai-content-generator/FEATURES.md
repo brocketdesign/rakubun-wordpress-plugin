@@ -1,307 +1,353 @@
-# Rakubun AI Content Generator - Features Documentation
+# Rakubun AI コンテンツジェネレーター - 機能ドキュメント
 
-## Overview
+## 概要
 
-The Rakubun AI Content Generator is a comprehensive WordPress plugin that leverages cutting-edge AI technology to help content creators generate high-quality articles and images efficiently.
+Rakubun AI コンテンツジェネレーターは、最新のAI技術（GPT-4、DALL-E 3）を活用して、高品質な記事と画像を効率的に生成するための包括的なWordPressプラグインです。外部ダッシュボード（app.rakubun.com）で一元管理され、セキュアで安全な運用を実現します。
 
-## Core Features
+## コア機能
 
-### 1. AI Article Generation
+### 1. AI記事生成
 
-**Technology**: OpenAI GPT-4
+**技術**: OpenAI GPT-4
 
-**Capabilities**:
-- Generate well-structured, professional articles on any topic
-- Customizable prompts for specific content needs
-- Automatic draft post creation
-- Content length optimization (up to 2000 tokens per article)
-- Maintains tone and style consistency
+**機能**:
+- 複雑に構成された、プロフェッショナルな記事を自動生成
+- カスタマイズ可能なプロンプトで特定のニーズに対応
+- 自動的にWordPress下書き投稿を作成
+- コンテンツ長の最適化（1記事あたり最大2000トークン）
+- トーンとスタイルの一貫性を維持
 
-**Use Cases**:
-- Blog posts
-- Product descriptions
-- How-to guides
-- News articles
-- Educational content
+**使用例**:
+- ブログ記事
+- 商品説明
+- ハウツーガイド
+- ニュース記事
+- 教育コンテンツ
 
-**How It Works**:
-1. User enters a detailed prompt describing the desired article
-2. Optional: User can specify a custom title
-3. Plugin sends request to GPT-4 via OpenAI API
-4. Generated article is displayed in the interface
-5. Optionally creates a WordPress draft post automatically
-6. User can copy content or use the created post
+**動作フロー**:
+1. ユーザーが希望する記事について詳しいプロンプトを入力
+2. オプション：カスタムタイトルを指定
+3. プラグインがGPT-4にOpenAI API経由でリクエストを送信
+4. 生成された記事がインターフェースに表示
+5. オプション：WordPressドラフト投稿を自動作成
+6. ユーザーがコンテンツをコピーするか、作成された投稿を利用
 
-### 2. AI Image Generation
+### 2. AI画像生成
 
-**Technology**: OpenAI DALL-E 3
+**技術**: OpenAI DALL-E 3
 
-**Capabilities**:
-- Generate unique, high-quality images from text descriptions
-- Three size options:
-  - Square: 1024x1024 (standard)
-  - Portrait: 1024x1792 (vertical)
-  - Landscape: 1792x1024 (horizontal)
-- Automatic media library integration
-- High-quality output suitable for thumbnails and featured images
+**機能**:
+- テキスト説明から独自の高品質画像を生成
+- 3つのサイズオプション：
+  - 正方形: 1024x1024（標準）
+  - 縦長: 1024x1792（垂直）
+  - 横長: 1792x1024（水平）
+- WordPressメディアライブラリへの自動統合
+- アイキャッチ画像やサムネイル用の高品質出力
 
-**Use Cases**:
-- Blog post featured images
-- Article thumbnails
-- Social media graphics
-- Product mockups
-- Illustration concepts
+**使用例**:
+- ブログ記事のアイキャッチ画像
+- 記事サムネイル
+- ソーシャルメディア画像
+- 商品モックアップ
+- イラストのコンセプト
 
-**How It Works**:
-1. User provides a detailed image description
-2. User selects desired image size
-3. Plugin requests image from DALL-E 3
-4. Generated image is displayed
-5. Optionally saved to WordPress media library
-6. Can be used as post thumbnail or in content
+**動作フロー**:
+1. ユーザーが画像の詳しい説明を提供
+2. ユーザーが希望する画像サイズを選択
+3. プラグインがDALL-E 3に画像生成をリクエスト
+4. 生成された画像が表示
+5. オプション：WordPressメディアライブラリに保存
+6. 投稿のアイキャッチ画像として使用可能
 
-### 3. Credit System
+### 3. 自動リライト機能
 
-**Free Credits**:
-- 3 article generation credits per user
-- 5 image generation credits per user
-- Credits assigned automatically on first use
+**技術**: OpenAI GPT-4
 
-**Credit Management**:
-- Real-time credit balance display
-- Separate tracking for articles and images
-- Credit deduction upon successful generation
-- Purchase history tracking
-- Transaction logging for audit purposes
+**機能**:
+- 既存の投稿を自動的にAIで改善・リライト
+- 記事の品質向上とSEO最適化
+- スケジュール機能で定期的な自動リライト
+- リライト前後の比較情報を記録
+- 改善度合いを可視化（文字数変化、SEO改善度など）
 
-**Database Storage**:
-- User credits table for balance tracking
-- Transactions table for payment history
-- Generated content table for audit trail
+**リライト内容**:
+- 文体と表現の改善
+- キーワード最適化
+- 文章構造の整理
+- 可読性の向上
+- SEO親和性の向上
 
-### 4. Payment Integration
+**スケジュール設定**:
+- 曜日ごとのスケジュール（月～日）
+- リライト対象となる記事数
+- 自動投稿または下書き保存のオプション
 
-**Technology**: Stripe
+### 4. クレジットシステム
 
-**Features**:
-- Secure payment processing
-- PCI-compliant credit card handling
-- Test mode for development
-- Live mode for production
-- Instant credit delivery
-- Transaction verification
+**無料クレジット**:
+- ユーザーあたり記事生成クレジット：3個
+- ユーザーあたり画像生成クレジット：5個
+- リライト用の独立したクレジット（初回時に付与）
 
-**Payment Flow**:
-1. User selects credit package (articles or images)
-2. Secure payment form powered by Stripe
-3. Payment intent created on server
-4. Card details handled by Stripe.js (never touch your server)
-5. Payment confirmed
-6. Credits automatically added to user account
-7. Transaction logged for records
+**クレジット管理**:
+- リアルタイムなクレジット残高表示
+- 記事と画像の個別トラッキング
+- 生成成功時にクレジット自動消費
+- 購入履歴の追跡
+- 監査目的でのトランザクションログ
 
-**Pricing Configuration**:
-- Customizable package prices
-- Adjustable credits per package
-- Admin-controlled pricing structure
-- Separate pricing for articles and images
+**データベース保存**:
+- ユーザークレジットテーブルで残高をトラッキング
+- トランザクションテーブルで支払い履歴を記録
+- 生成コンテンツテーブルで履歴を管理
 
-### 5. WordPress Integration
+### 5. 決済連携
 
-**Admin Dashboard**:
-- Clean, intuitive interface
-- Credit balance overview
-- Quick action buttons
-- Usage statistics
+**技術**: Stripe
 
-**Post Creation**:
-- Automatic draft post creation from articles
-- Pre-filled title and content
-- Ready for editing and publishing
-- Maintains user authorship
+**機能**:
+- 安全な支払い処理
+- PCI準拠のクレジットカード処理
+- 開発用テストモード
+- 本番用ライブモード
+- クレジット即座配信
+- トランザクション検証
 
-**Media Library**:
-- Generated images saved automatically
-- Proper file naming
-- Standard WordPress attachment handling
-- Can be used anywhere in WordPress
+**支払いフロー**:
+1. ユーザーがクレジットパッケージを選択
+2. Stripe決済フォームが表示
+3. サーバー側で支払いインテント（Payment Intent）を作成
+4. Stripe.js経由でカード情報を安全に処理（サーバーに到達しない）
+5. 支払い確認
+6. クレジットがユーザーアカウントに自動追加
+7. トランザクションが記録
 
-**User Management**:
-- Per-user credit tracking
-- User capability checks
-- Author attribution
-- Activity logging
+**価格設定**:
+- パッケージ価格のカスタマイズ可能
+- パッケージあたりのクレジット数を調整
+- 記事と画像で異なる価格を設定可能
 
-### 6. Security Features
+### 6. 外部ダッシュボード統合
 
-**Input Validation**:
-- All user inputs sanitized
-- Type validation for parameters
-- Whitelist validation for critical values
-- XSS prevention
+**ダッシュボード機能**: app.rakubun.com
 
-**Database Security**:
-- Prepared SQL statements
-- No dynamic column names without validation
-- Proper escaping
-- Secure data storage
+**一元管理される項目**:
+- OpenAI APIキー設定（記事、画像、リライト用）
+- Stripe APIキーの安全な管理
+- クレジット価格パッケージ設定
+- ユーザークレジット残高管理
+- 全サイトの統計・分析情報
+- 複数サイト運用の一元管理
 
-**API Security**:
-- Secure API key storage
-- WordPress options API
-- Keys not exposed to frontend
-- Proper authentication headers
+**利点**:
+- APIキーをローカルに保存しない完全なセキュリティ
+- 複数のWordPressサイトを単一ダッシュボードで管理
+- リアルタイムな価格調整が全サイトに反映
+- 一元化された分析とレポート
 
-**Payment Security**:
-- Stripe handles card data (PCI compliant)
-- Server-side payment verification
-- Payment intent ID validation
-- Metadata verification
-- User authentication required
+### 7. WordPress統合
 
-**WordPress Security**:
-- Nonce verification for all AJAX requests
-- User capability checks
-- Direct access prevention
-- Proper hook usage
+**管理ダッシュボード**:
+- 直感的なインターフェース
+- クレジット残高の概要表示
+- クイックアクションボタン
+- 使用統計表示
 
-### 7. Error Handling
+**投稿作成機能**:
+- 記事からの自動下書き投稿作成
+- タイトルとコンテンツを自動入力
+- 編集・公開の準備完了状態
+- ユーザー作成者情報を保持
 
-**User-Friendly Messages**:
-- Clear error descriptions
-- Actionable feedback
-- No technical jargon for end users
+**メディアライブラリ統合**:
+- 生成画像を自動保存
+- 適切なファイル名付け
+- 標準的なWordPress添付ファイル処理
+- WordPress全体で使用可能
 
-**API Error Handling**:
-- OpenAI API errors caught and reported
-- Stripe payment failures handled gracefully
-- Network timeout management
-- Rate limit awareness
+**ユーザー管理**:
+- ユーザーごとのクレジット追跡
+- ユーザー権限チェック
+- 作成者情報の帰属
+- アクティビティログ
 
-**Validation Errors**:
-- Empty prompt detection
-- Insufficient credits notification
-- Invalid configuration alerts
-- Missing API key warnings
+### 8. セキュリティ機能
 
-## Technical Specifications
+**入力検証**:
+- すべてのユーザー入力をサニタイズ
+- パラメータの型検証
+- 重要な値のホワイトリスト検証
+- XSS対策
 
-### System Requirements
+**データベースセキュリティ**:
+- 準備されたSQL文の使用
+- 動的カラム名を使わない（値の検証時を除く）
+- 適切なエスケープ
+- 安全なデータ保存
 
-- **WordPress**: 5.0 or higher
-- **PHP**: 7.4 or higher
-- **MySQL**: 5.6 or higher
-- **HTTPS**: Recommended for production
+**API セキュリティ**:
+- 外部ダッシュボードでのAPIキー安全管理
+- キーはフロントエンドに露出しない
+- 適切な認証ヘッダー
+- セキュアな通信チャネル
 
-### API Requirements
+**決済セキュリティ**:
+- Stripeでクレジットカード情報を処理（PCI準拠）
+- サーバー側での支払い検証
+- Payment Intent IDの検証
+- メタデータ検証
+- ユーザー認証必須
 
-- **OpenAI**: Active account with API key and credits
-- **Stripe**: Account with API keys (test or live)
+**WordPress セキュリティ**:
+- すべてのAJAXリクエストでノンス（nonce）検証
+- ユーザー権限チェック
+- 直接アクセス防止
+- 適切なフック使用
 
-### Database Tables
+### 9. エラーハンドリング
+
+**ユーザー向けメッセージ**:
+- 明確なエラー説明
+- 実行可能なフィードバック
+- 技術的な内容を避けた表現
+
+**API エラー処理**:
+- OpenAI APIエラーのキャッチと報告
+- Stripe支払い失敗の適切な処理
+- ネットワークタイムアウト管理
+- レート制限への対応
+
+**検証エラー**:
+- 空のプロンプト検出
+- クレジット不足通知
+- 無効な設定アラート
+- APIキー未設定警告
+
+## 技術仕様
+
+### システム要件
+
+- **WordPress**: 5.0以上
+- **PHP**: 7.4以上
+- **MySQL**: 5.6以上
+- **HTTPS**: 本番環境では推奨
+
+### API要件
+
+- **OpenAI**: アクティブなアカウント、APIキー、クレジット
+- **Stripe**: アカウント（テストまたはライブキー）
+
+### データベーステーブル
 
 1. **wp_rakubun_user_credits**
-   - Stores user credit balances
-   - Tracks articles and images separately
-   - Updated on generation and purchase
+   - ユーザーのクレジット残高を保存
+   - 記事、画像、リライトクレジット数
+   - 生成・購入時に更新
 
 2. **wp_rakubun_transactions**
-   - Logs all purchases
-   - Stores Stripe payment IDs
-   - Tracks amounts and credit types
+   - すべての購入を記録
+   - 支払い金額とクレジットタイプを追跡
+   - タイムスタンプと決済情報
 
 3. **wp_rakubun_generated_content**
-   - Archives generated content
-   - Links to WordPress posts
-   - Stores prompts for reference
+   - 生成されたコンテンツをアーカイブ
+   - プロンプト情報を参照用に保存
+   - 生成タイムスタンプ
 
-### Performance Considerations
+### パフォーマンス考慮
 
-**Generation Times**:
-- Articles: 30-60 seconds (GPT-4)
-- Images: 20-40 seconds (DALL-E 3)
+**生成時間**:
+- 記事: 30～60秒（GPT-4）
+- 画像: 20～40秒（DALL-E 3）
+- リライト: 20～45秒（GPT-4）
 
-**Server Requirements**:
-- Sufficient PHP execution time (120+ seconds recommended)
-- Adequate memory (128MB+ recommended)
-- Stable internet connection
+**サーバー要件**:
+- PHP実行時間: 120秒以上推奨
+- メモリ: 128MB以上推奨
+- 安定したインターネット接続
 
-**API Rate Limits**:
-- Respects OpenAI rate limits
-- Queues requests if needed
-- Error messages for rate limit hits
+**API制限**:
+- OpenAIレート制限の尊重
+- 必要に応じてリクエストをキュー
+- レート制限時のエラーメッセージ表示
 
-## User Roles and Permissions
+## ユーザーロールと権限
 
-### Content Creators (edit_posts capability)
-- Generate articles
-- Generate images
-- Purchase credits
-- View own credit balance
-- Access generation interfaces
+### コンテンツ作成者（edit_posts 権限）
+- 記事生成
+- 画像生成
+- クレジット購入
+- 自分のクレジット残高表示
+- 生成インターフェースへのアクセス
 
-### Administrators (manage_options capability)
-- All content creator permissions
-- Configure API keys
-- Set pricing
-- View all transactions
-- Access plugin settings
+### 管理者（manage_options 権限）
+- すべてのコンテンツ作成者の権限
+- ダッシュボード登録管理
+- ダッシュボード連携確認
+- すべてのトランザクション表示
+- プラグイン設定へのアクセス
 
-## Extensibility
+## 拡張性
 
-### Hooks Available
+### 利用可能なフック
 
-The plugin uses WordPress standard hooks and can be extended:
+プラグインは以下のWordPressフックを使用：
 
-- Activation hook for setup
-- Deactivation hook for cleanup
-- AJAX hooks for asynchronous operations
-- Admin menu hooks for interface
+- プラグイン有効化時フック
+- プラグイン無効化時フック
+- AJAX操作用フック
+- 管理メニューフック
 
-### Filter Opportunities
+### フィルタ機会
 
-While not explicitly defined, the plugin can be extended with:
-- Credit amount filters
-- Pricing filters
-- Content filters
-- Generation parameter filters
+今後拡張可能な項目：
+- クレジット数フィルタ
+- 価格フィルタ
+- コンテンツ出力フィルタ
+- 生成パラメータフィルタ
 
-## Limitations
+## 制限事項
 
-### OpenAI Limitations
+### OpenAI の制限
 
-- Subject to OpenAI's content policy
-- Requires active OpenAI account with credits
-- Rate limits apply
-- Some prompts may be rejected
+- OpenAIのコンテンツポリシーに準拠が必要
+- アクティブなOpenAIアカウントとクレジットが必要
+- レート制限が適用
+- 一部のプロンプトは拒否される可能性
 
-### Stripe Limitations
+### Stripe の制限
 
-- Requires Stripe account
-- Payment processing fees apply
-- Country availability varies
-- Some card types may not work
+- Stripeアカウントが必要
+- 支払い処理手数料が発生
+- 国による利用可否の違い
+- 一部のカードタイプは使用不可
 
-### WordPress Limitations
+### WordPress の制限
 
-- Requires WordPress environment
-- PHP version dependency
-- MySQL required
-- Admin access needed for setup
+- WordPressの環境が必要
+- PHPバージョンに依存
+- MySQLが必要
+- セットアップに管理者アクセスが必要
 
-## Future Enhancement Possibilities
+## 今後の拡張機能候補
 
-- Multiple AI model selection
-- Bulk generation
-- Content scheduling
-- Team credits sharing
-- Advanced analytics
-- Content templates
-- SEO optimization features
-- Multi-language support
-- Custom model fine-tuning
-- API rate limit handling
-- Webhook integration for payments
+- 複数のAIモデル選択
+- バッチ生成機能
+- コンテンツスケジューリング
+- チーム間クレジット共有
+- 高度な分析機能
+- コンテンツテンプレート
+- SEO最適化機能
+- マルチ言語対応
+- カスタムモデルのファインチューニング
+- API レート制限の高度な処理
+- 支払い用Webhook統合
+
+---
+
+**プラグインバージョン**: 2.1.0
+**最終更新**: 2025年11月
 
 ## Support and Maintenance
 

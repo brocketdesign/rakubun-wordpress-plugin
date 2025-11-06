@@ -680,4 +680,63 @@ class Rakubun_AI_Credits_Manager {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql);
     }
+
+    /**
+     * Record a rewrite activity
+     */
+    public static function record_rewrite($user_id, $post_id, $original_content, $rewritten_content, $seo_improvements = 0) {
+        global $wpdb;
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        
+        $post = get_post($post_id);
+        $character_change = strlen($rewritten_content) - strlen($original_content);
+        
+        $result = $wpdb->insert(
+            $rewrite_table,
+            array(
+                'user_id' => $user_id,
+                'post_id' => $post_id,
+                'original_content' => $original_content,
+                'rewritten_content' => $rewritten_content,
+                'character_change' => $character_change,
+                'seo_improvements' => $seo_improvements,
+                'status' => 'completed',
+                'rewrite_date' => current_time('mysql')
+            ),
+            array('%d', '%d', '%s', '%s', '%d', '%d', '%s', '%s')
+        );
+        
+        return $result !== false;
+    }
+
+    /**
+     * Get posts that will be rewritten next based on current schedule
+     */
+    public static function get_scheduled_rewrite_posts($limit = 10, $user_id = null) {
+        global $wpdb;
+        
+        $posts_table = $wpdb->posts;
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        
+        $schedule = get_option('rakubun_ai_rewrite_schedule', array());
+        $target_post_age = intval($schedule['target_post_age'] ?? 6);
+        $date_threshold = date('Y-m-d H:i:s', strtotime("-{$target_post_age} months"));
+        $recent_rewrite_threshold = date('Y-m-d H:i:s', strtotime('-30 days'));
+        
+        // Get posts that are old enough and haven't been rewritten recently
+        $query = $wpdb->prepare("
+            SELECT p.ID, p.post_title, p.post_modified, p.post_content,
+                   COALESCE(r.rewrite_date, NULL) as last_rewrite_date
+            FROM {$posts_table} p
+            LEFT JOIN {$rewrite_table} r ON p.ID = r.post_id AND r.rewrite_date > %s
+            WHERE p.post_status = 'publish'
+            AND p.post_type = 'post'
+            AND p.post_modified < %s
+            AND r.id IS NULL
+            ORDER BY p.post_modified ASC
+            LIMIT %d
+        ", $recent_rewrite_threshold, $date_threshold, $limit);
+        
+        return $wpdb->get_results($query);
+    }
 }

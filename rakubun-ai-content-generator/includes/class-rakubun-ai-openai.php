@@ -63,7 +63,7 @@ class Rakubun_AI_OpenAI {
     /**
      * Generate article using GPT-4
      */
-    public function generate_article($prompt, $max_tokens = null) {
+    public function generate_article($prompt, $max_tokens = null, $language = 'ja') {
         $config = $this->get_openai_config();
         
         if (empty($config['api_key'])) {
@@ -75,12 +75,41 @@ class Rakubun_AI_OpenAI {
 
         $endpoint = $this->api_base . '/chat/completions';
         
+        // Map language codes to language names and instructions
+        $language_map = array(
+            'ja' => array('name' => 'Japanese', 'instruction' => 'Generate the article in Japanese (日本語).'),
+            'en' => array('name' => 'English', 'instruction' => 'Generate the article in English.'),
+            'zh' => array('name' => 'Traditional Chinese', 'instruction' => 'Generate the article in Traditional Chinese (繁體中文).'),
+            'es' => array('name' => 'Spanish', 'instruction' => 'Generate the article in Spanish (Español).'),
+            'fr' => array('name' => 'French', 'instruction' => 'Generate the article in French (Français).'),
+            'de' => array('name' => 'German', 'instruction' => 'Generate the article in German (Deutsch).'),
+            'ko' => array('name' => 'Korean', 'instruction' => 'Generate the article in Korean (한국어).')
+        );
+        
+        // Default to Japanese if language is not recognized
+        if (!isset($language_map[$language])) {
+            $language = 'ja';
+        }
+        
+        $language_instruction = $language_map[$language]['instruction'];
+        
+        // Create a system prompt that requests both title and content with markdown formatting
+        $title_instruction = '';
+        if ($language === 'ja') {
+            $title_instruction = "\n\n必ず以下の形式で返してください:\n\n<title>\nSEOフレンドリーなタイトル（50-60文字）\n</title>\n\n<content>\n本文内容（Markdown形式で、## または ### を使用してセクションを分ける、**太字**、リストなど）\n</content>\n\nMarkdown形式の例:\n## セクションタイトル\n本文\n\n### サブセクション\n- リスト項目1\n- リスト項目2\n\n**太字テキスト** または *斜体テキスト*";
+        } elseif ($language === 'en') {
+            $title_instruction = "\n\nYou MUST return the response in the following format:\n\n<title>\nSEO-friendly title (50-60 characters)\n</title>\n\n<content>\nArticle body content (Use Markdown format with ## or ### for sections, **bold**, lists, etc.)\n</content>\n\nMarkdown example:\n## Section Title\nBody text\n\n### Subsection\n- List item 1\n- List item 2\n\n**Bold text** or *Italic text*";
+        } else {
+            // For other languages, use English format as fallback
+            $title_instruction = "\n\nYou MUST return the response in the following format:\n\n<title>\nSEO-friendly title (50-60 characters)\n</title>\n\n<content>\nArticle body content (Use Markdown format with ## or ### for sections, **bold**, lists, etc.)\n</content>\n\nMarkdown example:\n## Section Title\nBody text\n\n### Subsection\n- List item 1\n- List item 2\n\n**Bold text** or *Italic text*";
+        }
+        
         $data = array(
             'model' => $config['model_article'] ?? 'gpt-4',
             'messages' => array(
                 array(
                     'role' => 'system',
-                    'content' => 'You are a professional content writer. Generate well-structured, engaging, and informative articles.'
+                    'content' => 'You are a professional SEO content writer. Generate well-structured, engaging, and informative articles. ' . $language_instruction . $title_instruction
                 ),
                 array(
                     'role' => 'user',
@@ -100,9 +129,29 @@ class Rakubun_AI_OpenAI {
         $body = json_decode($response['body'], true);
 
         if (isset($body['choices'][0]['message']['content'])) {
+            $content = $body['choices'][0]['message']['content'];
+            $title = '';
+            
+            // Parse title and content from the response
+            $title_match = preg_match('/<title>\s*(.+?)\s*<\/title>/s', $content, $title_matches);
+            $content_match = preg_match('/<content>\s*(.+?)\s*<\/content>/s', $content, $content_matches);
+            
+            if ($title_match && !empty($title_matches[1])) {
+                $title = trim($title_matches[1]);
+                $content = $content_match && !empty($content_matches[1]) ? trim($content_matches[1]) : $content;
+                
+                // Remove the XML tags from content if they're still there
+                $content = preg_replace('/<title>.+?<\/title>/s', '', $content);
+                $content = preg_replace('/<content>|<\/content>/s', '', $content);
+            }
+            
+            // Convert markdown to HTML for better formatting
+            $html_content = $this->markdown_to_html($content);
+            
             return array(
                 'success' => true,
-                'content' => $body['choices'][0]['message']['content'],
+                'title' => $title,
+                'content' => $html_content,
                 'usage' => isset($body['usage']) ? $body['usage'] : array()
             );
         }
@@ -172,6 +221,86 @@ class Rakubun_AI_OpenAI {
             'success' => false,
             'error' => 'Failed to generate image. Please try again.'
         );
+    }
+
+    /**
+     * Convert Markdown to HTML
+     */
+    private function markdown_to_html($markdown) {
+        // Protect code blocks
+        $markdown = preg_replace_callback('/```[\s\S]*?```/', function($matches) {
+            return '___CODE_BLOCK_' . uniqid() . '___';
+        }, $markdown);
+        
+        $code_blocks = array();
+        $markdown = preg_replace_callback('/```[\s\S]*?```/', function($matches) use (&$code_blocks) {
+            $key = '___CODE_BLOCK_' . uniqid() . '___';
+            $code_blocks[$key] = '<pre><code>' . htmlspecialchars(trim($matches[0], '`')) . '</code></pre>';
+            return $key;
+        }, $markdown);
+        
+        // Convert ## headings to <h2>
+        $markdown = preg_replace('/^## (.+)$/m', '<h2>$1</h2>', $markdown);
+        
+        // Convert ### headings to <h3>
+        $markdown = preg_replace('/^### (.+)$/m', '<h3>$1</h3>', $markdown);
+        
+        // Convert #### headings to <h4>
+        $markdown = preg_replace('/^#### (.+)$/m', '<h4>$1</h4>', $markdown);
+        
+        // Convert # headings to <h1> (but avoid title)
+        $markdown = preg_replace('/^# (.+)$/m', '<h1>$1</h1>', $markdown);
+        
+        // Convert **bold** to <strong>
+        $markdown = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $markdown);
+        
+        // Convert __bold__ to <strong>
+        $markdown = preg_replace('/__(.+?)__/s', '<strong>$1</strong>', $markdown);
+        
+        // Convert *italic* to <em>
+        $markdown = preg_replace('/\*(.+?)\*/s', '<em>$1</em>', $markdown);
+        
+        // Convert _italic_ to <em>
+        $markdown = preg_replace('/_(.+?)_/s', '<em>$1</em>', $markdown);
+        
+        // Convert unordered lists
+        $markdown = preg_replace_callback('/^- (.+)$/m', function($matches) {
+            return '<li>' . $matches[1] . '</li>';
+        }, $markdown);
+        
+        // Wrap consecutive list items in <ul>
+        $markdown = preg_replace('/<li>(.+?)<\/li>(\s*<li>)/s', '<ul><li>$1</li>$2', $markdown);
+        $markdown = preg_replace('/(<li>.+?<\/li>)(\s*(?!<li>))/s', '$1</ul>$2', $markdown);
+        
+        // Convert ordered lists
+        $markdown = preg_replace_callback('/^\d+\. (.+)$/m', function($matches) {
+            return '<li>' . $matches[1] . '</li>';
+        }, $markdown);
+        
+        // Wrap consecutive ordered list items in <ol>
+        $markdown = preg_replace('/<li>(.+?)<\/li>(\s*<li>)/s', '<ol><li>$1</li>$2', $markdown);
+        $markdown = preg_replace('/(<li>.+?<\/li>)(\s*(?!<li>))/s', '$1</ol>$2', $markdown);
+        
+        // Convert line breaks to paragraphs
+        $paragraphs = preg_split('/\n\n+/', trim($markdown));
+        $html = '';
+        foreach ($paragraphs as $para) {
+            $para = trim($para);
+            if (!empty($para)) {
+                // Don't wrap headings, lists, or code blocks in <p>
+                if (!preg_match('/^(<h[1-6]>|<ul>|<ol>|<li>|<pre>|<code>)/', $para)) {
+                    $para = '<p>' . nl2br($para) . '</p>';
+                }
+                $html .= $para . "\n";
+            }
+        }
+        
+        // Restore code blocks
+        foreach ($code_blocks as $key => $code) {
+            $html = str_replace($key, $code, $html);
+        }
+        
+        return $html;
     }
 
     /**
@@ -274,6 +403,78 @@ class Rakubun_AI_OpenAI {
             'success' => true,
             'attachment_id' => $id,
             'url' => wp_get_attachment_url($id)
+        );
+    }
+
+    /**
+     * Generate tags for article using GPT
+     */
+    public function generate_tags($title, $content, $max_tags = 5, $language = 'ja') {
+        $config = $this->get_openai_config();
+        
+        if (empty($config['api_key'])) {
+            return array(
+                'success' => false,
+                'error' => 'OpenAI API key is not configured in the Rakubun dashboard.'
+            );
+        }
+
+        $endpoint = $this->api_base . '/chat/completions';
+        
+        // Prepare language-specific prompt
+        $lang_prompt = '';
+        if ($language === 'ja') {
+            $lang_prompt = "最大{$max_tags}個の関連するタグを日本語で生成してください。";
+        } else {
+            $lang_prompt = "Generate up to {$max_tags} relevant tags in English.";
+        }
+        
+        // Create prompt for tag generation
+        $tag_prompt = "以下の記事タイトルと内容から、{$lang_prompt}\n\nタイトル: {$title}\n\n内容:\n{$content}\n\nタグは、カンマで区切られたシンプルなリストで返してください。例: タグ1, タグ2, タグ3\nタグのみを返してください。説明やその他のテキストは不要です。";
+        
+        $data = array(
+            'model' => $config['model_article'] ?? 'gpt-4',
+            'messages' => array(
+                array(
+                    'role' => 'system',
+                    'content' => 'You are a content tagging expert. Generate concise, relevant tags for articles.'
+                ),
+                array(
+                    'role' => 'user',
+                    'content' => $tag_prompt
+                )
+            ),
+            'max_tokens' => 200,
+            'temperature' => 0.5
+        );
+
+        $response = $this->make_request($endpoint, $data);
+
+        if (!$response['success']) {
+            return $response;
+        }
+
+        $body = json_decode($response['body'], true);
+
+        if (isset($body['choices'][0]['message']['content'])) {
+            $tags_text = $body['choices'][0]['message']['content'];
+            
+            // Parse the comma-separated tags
+            $tags = array_map('trim', explode(',', $tags_text));
+            
+            // Remove empty tags and limit to max_tags
+            $tags = array_filter($tags);
+            $tags = array_slice($tags, 0, $max_tags);
+            
+            return array(
+                'success' => true,
+                'tags' => $tags
+            );
+        }
+
+        return array(
+            'success' => false,
+            'error' => 'Failed to generate tags. Please try again.'
         );
     }
 }

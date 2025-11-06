@@ -224,21 +224,33 @@ if (!defined('WPINC')) {
     </div>
 
     <div class="rakubun-info-section">
-        <h2>Rakubun AI コンテンツジェネレーターについて</h2>
-        <p>このプラグインを使用すると、OpenAIのGPT-4とDALL-Eモデルを使用して高品質な記事と画像を生成できます。</p>
+        <h2>🚀 Rakubun AI で、コンテンツ制作を加速させましょう</h2>
+        <p>最新のAI技術（GPT-4とDALL-E 3）を活用して、プロフェッショナルな記事と高品質な画像を効率的に生成できます。あなたの創造性を最大限に活かし、コンテンツ制作の時間を大幅短縮できます。</p>
         
-        <h3>無料クレジット</h3>
+        <h3>✨ あなたの無料チケット</h3>
+        <p>今すぐ始められます！以下の無料クレジットでお試しください：</p>
         <ul>
-            <li>記事生成 3回分の無料クレジット</li>
-            <li>画像生成 5回分の無料クレジット</li>
+            <li><strong>📝 記事生成：5回分</strong> - 複雑に構成されたプロフェッショナルな記事を生成</li>
+            <li><strong>🖼️ 画像生成：10回分</strong> - 3つのサイズから選べる独自の高品質画像</li>
+            <li><strong>🔄 リライト：3回分</strong> - 既存の投稿をAIで自動改善・最適化</li>
         </ul>
         
-        <h3>はじめ方</h3>
+        <h3>🎯 さっそく始めてみましょう</h3>
         <ol>
-            <li>管理者の方：<a href="<?php echo admin_url('admin.php?page=rakubun-ai-settings'); ?>">設定</a>でOpenAI APIキーとStripeキーを設定してください</li>
-            <li>無料クレジットを使ってコンテンツを生成してみましょう</li>
-            <li>必要に応じて追加クレジットをご購入ください</li>
+            <li><strong>📝 記事を作成：</strong>「<a href="<?php echo admin_url('admin.php?page=rakubun-ai-generate-article'); ?>">記事を生成</a>」で、ブログ記事や商品説明を一瞬で作成</li>
+            <li><strong>🎨 画像を生成：</strong>「<a href="<?php echo admin_url('admin.php?page=rakubun-ai-generate-image'); ?>">画像を生成</a>」で、アイキャッチ画像やサムネイルを自動作成</li>
+            <li><strong>🔄 投稿を改善：</strong>「<a href="<?php echo admin_url('admin.php?page=rakubun-ai-auto-rewrite'); ?>">自動リライト</a>」で、既存コンテンツをSEO最適化</li>
+            <li><strong>💳 もっと使う：</strong>無料クレジットを使い切ったら、「<a href="<?php echo admin_url('admin.php?page=rakubun-ai-purchase'); ?>">クレジット購入</a>」で追加購入</li>
         </ol>
+        
+        <h3>💡 こんなことができます</h3>
+        <ul>
+            <li>✅ ブログ記事、商品説明、ハウツーガイドを数秒で生成</li>
+            <li>✅ 自動下書き作成で、編集・公開の準備もスムーズ</li>
+            <li>✅ WordPressメディアライブラリに画像を直接保存</li>
+            <li>✅ スケジュール設定で定期的な自動リライト</li>
+            <li>✅ セキュアな支払い処理（Stripe対応）</li>
+        </ul>
     </div>
 </div>
 

@@ -124,6 +124,7 @@ class Rakubun_AI_Activator {
     
     /**
      * Initialize connection with external dashboard
+     * Attempts immediate registration on plugin activation
      */
     private static function initialize_external_connection() {
         // Set initial registration status
@@ -137,12 +138,26 @@ class Rakubun_AI_Activator {
             add_option('rakubun_ai_instance_id', $instance_id);
         }
         
-        // Attempt to register with external dashboard in background
-        wp_schedule_single_event(time() + 60, 'rakubun_ai_attempt_registration');
+        // Attempt immediate registration during activation
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        $external_api = new Rakubun_AI_External_API();
+        
+        if ($external_api->register_plugin()) {
+            // Registration successful
+            update_option('rakubun_ai_registration_status', 'registered');
+            error_log('Rakubun AI: Plugin auto-registered with dashboard on activation');
+        } else {
+            // Registration failed, schedule a retry in the background
+            // The admin can also manually trigger registration from settings page
+            update_option('rakubun_ai_registration_status', 'pending');
+            wp_schedule_single_event(time() + 300, 'rakubun_ai_attempt_registration');
+            error_log('Rakubun AI: Initial registration attempt failed, scheduled retry');
+        }
     }
     
     /**
      * Attempt registration with external dashboard (background task)
+     * Called as a fallback if immediate registration fails
      */
     public static function attempt_registration() {
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
@@ -151,9 +166,11 @@ class Rakubun_AI_Activator {
         if ($external_api->register_plugin()) {
             // Registration successful
             update_option('rakubun_ai_registration_status', 'registered');
+            error_log('Rakubun AI: Scheduled registration retry succeeded');
         } else {
             // Registration failed, will try again manually through admin
             update_option('rakubun_ai_registration_status', 'failed');
+            error_log('Rakubun AI: Scheduled registration retry failed');
         }
     }
     

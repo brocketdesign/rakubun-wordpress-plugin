@@ -94,6 +94,13 @@ class Rakubun_AI_Auto_Rewriter {
     }
 
     /**
+     * Get public method to retrieve scheduled posts for display
+     */
+    public static function get_next_scheduled_posts($limit = 10) {
+        return Rakubun_AI_Credits_Manager::get_scheduled_rewrite_posts($limit);
+    }
+
+    /**
      * Rewrite a specific post
      */
     public static function rewrite_post($post_id, $user_id) {

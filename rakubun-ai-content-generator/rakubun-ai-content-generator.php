@@ -3,7 +3,7 @@
  * Plugin Name: Rakubun AI Content Generator
  * Plugin URI: https://github.com/brocketdesign/rakubun-wordpress-plugin
  * Description: Generate AI-powered articles and images using OpenAI GPT-4 and DALL-E. Includes Stripe payment integration for purchasing credits.
- * Version: 2.1.0
+ * Version: 2.1.1
  * Author: Brocket Design
  * Author URI: https://github.com/brocketdesign
  * License: GPL-2.0+
@@ -18,7 +18,7 @@ if (!defined('WPINC')) {
 }
 
 // Plugin version
-define('RAKUBUN_AI_VERSION', '2.1.0');
+define('RAKUBUN_AI_VERSION', '2.1.1');
 
 // Plugin directory path
 define('RAKUBUN_AI_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -76,5 +76,22 @@ function run_rakubun_ai_content_generator() {
     $plugin = new Rakubun_AI_Content_Generator();
     $plugin->run();
 }
+
+// === Automatic GitHub Update Checker ===
+require RAKUBUN_AI_PLUGIN_DIR . 'plugin-update-checker-master/load-v5p6.php';
+
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$myUpdateChecker = PucFactory::buildUpdateChecker(
+    'https://github.com/brocketdesign/rakubun-wordpress-plugin/',
+    __FILE__,
+    'rakubun-ai-content-generator'
+);
+
+// Optional: if your release tag is not the default "main" branch
+$myUpdateChecker->setBranch('main');
+
+// Optional: if you use GitHub Releases
+$myUpdateChecker->getVcsApi()->enableReleaseAssets();
 
 run_rakubun_ai_content_generator();

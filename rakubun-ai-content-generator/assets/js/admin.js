@@ -43,6 +43,20 @@
             generateArticle();
         });
 
+        // Handle article length description updates
+        $('#article_length').on('change', function() {
+            updateLengthDescription($(this).val());
+        });
+
+        // Handle article tone description updates
+        $('#article_tone').on('change', function() {
+            updateToneDescription($(this).val());
+        });
+
+        // Initialize descriptions
+        updateLengthDescription($('#article_length').val());
+        updateToneDescription($('#article_tone').val());
+
         // Generate Image Form
         $('#rakubun-generate-image-form').on('submit', function(e) {
             e.preventDefault();
@@ -77,13 +91,79 @@ function initializeStripe() {
     }
 }
 
+/**
+ * Update length description based on selected value
+ */
+function updateLengthDescription(value) {
+    const descriptions = {
+        short: {
+            title: '短い',
+            text: '動画、インフォグラフィック、製品説明など、簡潔なコンテンツに最適です。'
+        },
+        medium: {
+            title: '標準',
+            text: 'バランスの取れた深さと読みやすさで、読者を引きつけ、適切な情報を提供します。'
+        },
+        long: {
+            title: '長い',
+            text: 'SEOランキングを上げるための包括的な記事。より多くのリードを生成します。'
+        }
+    };
+
+    const desc = descriptions[value] || descriptions['medium'];
+    $('#article_length_desc').html(
+        '<p><strong style="color: #0073aa;">' + desc.title + '</strong></p>' +
+        '<p>' + desc.text + '</p>'
+    );
+}
+
+/**
+ * Update tone description based on selected value
+ */
+function updateToneDescription(value) {
+    const descriptions = {
+        neutral: {
+            title: 'ニュートラル',
+            text: '客観的でバランスの取れた、事実に基づいたトーン。'
+        },
+        formal: {
+            title: 'フォーマル',
+            text: 'プロフェッショナルで正式な言語。企業やアカデミックなコンテンツに最適です。'
+        },
+        trustworthy: {
+            title: '信頼性重視',
+            text: '権威的で信頼できる、専門的な知識を示すトーン。'
+        },
+        friendly: {
+            title: 'フレンドリー',
+            text: '親しみやすく会話的なトーン。読者を親しく引きつけます。'
+        },
+        witty: {
+            title: 'ユーモア',
+            text: '会話的で楽しく、ユーモアを交えたトーン。'
+        }
+    };
+
+    const desc = descriptions[value] || descriptions['neutral'];
+    $('#article_tone_desc').html(
+        '<p><strong style="color: #0073aa;">' + desc.title + '</strong></p>' +
+        '<p>' + desc.text + '</p>'
+    );
+}
+
     /**
      * Generate Article
      */
     function generateArticle() {
         const title = $('#article_title').val();
         const prompt = $('#article_prompt').val();
+        const language = $('#article_language').val();
+        const contentLength = $('#article_length').val();
+        const tone = $('#article_tone').val();
+        const focusKeywords = $('#article_keywords').val();
         const createPost = $('#create_post').is(':checked');
+        const generateTags = $('#generate_tags').is(':checked');
+        const categories = $('#article_categories').val() || [];
 
         if (!prompt) {
             alert('記事のプロンプトを入力してください。');
@@ -104,23 +184,34 @@ function initializeStripe() {
                 nonce: rakubunAI.nonce,
                 title: title,
                 prompt: prompt,
-                create_post: createPost
+                language: language,
+                content_length: contentLength,
+                tone: tone,
+                focus_keywords: focusKeywords,
+                create_post: createPost,
+                generate_tags: generateTags,
+                categories: categories
             },
             success: function(response) {
                 $('#rakubun-article-loading').hide();
                 $('#rakubun-generate-article-form button[type="submit"]').prop('disabled', false);
 
                 if (response.success) {
+                    // Display title if available
+                    if (response.data.title) {
+                        $('#rakubun-article-title').html('<h3 style="margin: 0; color: #667eea; font-size: 1.5rem;">' + escapeHtml(response.data.title) + '</h3>');
+                    }
+                    
                     $('#rakubun-article-content').html(formatArticleContent(response.data.content));
                     $('#rakubun-article-result').show();
                     
                     // Update credits display
                     updateCreditsDisplay(response.data.credits);
-
-                    // Show success message if post was created
-                    if (response.data.post_id) {
-                        alert('記事が生成され、下書きとして保存されました！');
-                    }
+                    
+                    // Scroll to result
+                    $('html, body').animate({
+                        scrollTop: $('#rakubun-article-result').offset().top - 100
+                    }, 800);
                 } else {
                     showError('#rakubun-article-error', response.data.message);
                 }
@@ -331,6 +422,15 @@ function initializeStripe() {
     }
 
     /**
+     * Escape HTML special characters
+     */
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
      * Update Credits Display
      */
     function updateCreditsDisplay(credits) {
@@ -343,18 +443,22 @@ function initializeStripe() {
      * Show Error Message
      */
     function showError(selector, message) {
-        $(selector).find('p').text(message);
+        $(selector).find('#rakubun-error-message').text(message);
         $(selector).show();
+        
+        // Scroll to error
+        $('html, body').animate({
+            scrollTop: $(selector).offset().top - 100
+        }, 800);
     }
 
     /**
      * Format Article Content
      */
     function formatArticleContent(content) {
-        // Convert markdown-style formatting to HTML
-        content = content.replace(/\n\n/g, '</p><p>');
-        content = content.replace(/\n/g, '<br>');
-        return '<p>' + content + '</p>';
+        // Content is already formatted as HTML from backend markdown conversion
+        // Just ensure it's properly displayed
+        return content;
     }
 
     /**

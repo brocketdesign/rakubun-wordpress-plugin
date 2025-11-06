@@ -194,22 +194,4 @@ if (wp_verify_nonce($_POST['rakubun_ai_settings_nonce'] ?? '', 'rakubun_ai_setti
         </form>
     </div>
     <?php endif; ?>
-
-    <!-- Information Section -->
-    <div class="rakubun-settings-info" style="margin-top: 30px;">
-        <h2>ダッシュボード管理</h2>
-        <p>
-            このプラグインは外部ダッシュボードで一元管理されています。<br>
-            <a href="https://app.rakubun.com" target="_blank" class="button button-primary">Rakubun管理ダッシュボードを開く</a>
-        </p>
-        
-        <h3>管理項目</h3>
-        <ul>
-            <li><strong>OpenAI APIキー設定</strong> - 記事、画像、リライト用の設定を一元管理</li>
-            <li><strong>パッケージ価格設定</strong> - クレジットパッケージの価格と内容</li>
-            <li><strong>Stripe決済設定</strong> - 支払い方法と通貨設定</li>
-            <li><strong>ユーザークレジット管理</strong> - ユーザーのクレジット残高と付与</li>
-            <li><strong>使用統計・アナリティクス</strong> - 生成量、売上、ユーザー数など</li>
-        </ul>
-    </div>
 </div>

@@ -1,180 +1,193 @@
-# Rakubun AI Content Generator
+# Rakubun AI コンテンツジェネレーター
 
-A powerful WordPress plugin that enables users to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E 3 models. The plugin includes Stripe payment integration for purchasing additional credits.
+Rakubun AI コンテンツジェネレーターは、OpenAIの最新技術（GPT-4とDALL-E 3）を活用して、高品質な記事と画像をAIで自動生成するWordPressプラグインです。外部ダッシュボード（app.rakubun.com）で一元管理でき、Stripe決済連携により安全なクレジット購入ができます。
 
-## Features
+## 主な機能
 
-- **AI Article Generation**: Generate well-structured, engaging articles using GPT-4
-- **AI Image Generation**: Create unique images using DALL-E 3
-- **Credit System**: 
-  - 3 free article generation credits per user
-  - 5 free image generation credits per user
-  - Purchase additional credits via Stripe
-- **WordPress Integration**: 
-  - Automatically create draft posts from generated articles
-  - Save generated images to WordPress media library
-- **Payment Processing**: Secure payment handling through Stripe
-- **User-Friendly Interface**: Clean admin dashboard with easy-to-use generation forms
+- **📝 AI記事生成**: GPT-4を使用して高品質で構成の整った記事を自動生成
+- **🖼️ AI画像生成**: DALL-E 3で説明テキストから独自の画像を生成
+- **🔄 自動リライト機能**: 既存の記事をAIで自動的に改善・リライト
+- **💳 クレジットシステム**: 
+  - 新規ユーザーは無料で記事生成3クレジット、画像生成5クレジットを取得
+  - リライト機能用の独立したクレジットシステム
+  - Stripeによる安全なクレジット購入
+- **📦 一元管理ダッシュボード**: 外部ダッシュボード（app.rakubun.com）で全サイトを統一管理
+- **🔐 高度なセキュリティ**: APIキーやStripe決済情報は外部ダッシュボードで安全に管理
+- **📊 分析ダッシュボード**: 生成記事数、クレジット使用状況、売上などを可視化
+- **WordPress統合**: 
+  - 生成された記事から自動的に下書き投稿を作成
+  - 生成画像をメディアライブラリに自動保存
+- **💰 安全な支払い処理**: Stripeによる世界標準のセキュアな決済
+- **👥 使いやすいインターフェース**: クリーンで直感的な管理画面
 
-## Requirements
+## 動作要件
 
-- WordPress 5.0 or higher
-- PHP 7.4 or higher
-- MySQL 5.6 or higher
-- OpenAI API account with API key
-- Stripe account with API keys
+- WordPress 5.0以上
+- PHP 7.4以上
+- MySQL 5.6以上
+- Stripe アカウント（支払い機能を使用する場合）
+- インターネット接続（外部ダッシュボード連携のため）
 
-## Installation
+## インストール
 
-1. Download the plugin folder `rakubun-ai-content-generator`
-2. Upload it to your WordPress `/wp-content/plugins/` directory
-3. Activate the plugin through the 'Plugins' menu in WordPress
-4. Configure the plugin settings (see Configuration section)
+詳細なインストール手順については、[INSTALL.md](INSTALL.md) をご覧ください。
 
-## Configuration
+### 簡易インストール手順
 
-### Step 1: OpenAI API Setup
+1. [GitHub リリースページ](https://github.com/brocketdesign/rakubun-wordpress-plugin/releases) からプラグインをダウンロード
+2. ダウンロードした `rakubun-ai-content-generator` フォルダを WordPress の `/wp-content/plugins/` ディレクトリにアップロード
+3. WordPressの管理画面 **プラグイン** から「Rakubun AI Content Generator」を **有効化**
+4. **AI コンテンツ → 設定** でダッシュボード登録を完了
 
-1. Create an account at [OpenAI Platform](https://platform.openai.com/)
-2. Navigate to API keys section
-3. Generate a new API key
-4. Copy the API key
+## セットアップ
 
-### Step 2: Stripe Setup
+プラグインをインストール後、以下の手順で初期設定を行います：
 
-1. Create an account at [Stripe](https://stripe.com/)
-2. For testing, use test mode keys from [Stripe Dashboard](https://dashboard.stripe.com/test/apikeys)
-3. For production, use live mode keys
-4. Copy both the Publishable Key and Secret Key
+### ステップ1: ダッシュボード登録
 
-### Step 3: Plugin Configuration
+1. WordPressの管理画面で **AI コンテンツ → 設定** にアクセス
+2. **プラグイン登録** ボタンをクリック
+3. プラグインが自動的に Rakubun 管理ダッシュボードに登録
+4. 登録完了後、外部ダッシュボードで詳細な設定が可能
 
-1. In WordPress admin, go to **AI Content → Settings**
-2. Paste your OpenAI API key
-3. Paste your Stripe Publishable Key and Secret Key
-4. Configure pricing (default: $5 for 10 articles, $2 for 20 images)
-5. Save settings
+### ステップ2: 外部ダッシュボードでの設定
 
-## Usage
+1. [Rakubun 管理ダッシュボード](https://app.rakubun.com) にアクセス
+2. OpenAI APIキーを登録
+3. Stripe APIキー（公開キーと秘密キー）を登録
+4. クレジットパッケージの価格設定を完了
 
-### Dashboard
+## 使い方
 
-Access the main dashboard at **AI Content → Dashboard** to:
-- View your remaining credits
-- Quick access to generation tools
-- Overview of plugin features
+### ダッシュボード
 
-### Generate Article
+**AI コンテンツ → ダッシュボード** にアクセスすると：
+- 残りクレジット数を表示
+- 記事・画像生成ツールへの素早いアクセス
+- 使用状況と分析情報を表示
+- 生成履歴を確認可能
 
-1. Go to **AI Content → Generate Article**
-2. Enter an optional title for your article
-3. Provide a detailed prompt describing the article you want
-4. Choose whether to automatically create a draft post
-5. Click "Generate Article"
-6. The AI will generate your article (uses 1 credit)
+### 記事を生成する
 
-**Example Prompt:**
+1. **AI コンテンツ → 記事を生成** にアクセス
+2. 記事のタイトルを入力（任意）
+3. 生成してほしい記事について詳しく説明
+4. 下書き投稿を自動作成するかどうか選択
+5. **記事を生成する** をクリック
+6. AIが記事を生成します（1クレジット消費）
+
+**プロンプトの例：**
 ```
-Write a comprehensive article about the benefits of meditation for mental health. 
-Include scientific research, practical tips for beginners, and address common 
-misconceptions. Make it engaging and approximately 1000 words.
-```
-
-### Generate Image
-
-1. Go to **AI Content → Generate Image**
-2. Provide a detailed description of the image you want
-3. Select the image size (Square, Portrait, or Landscape)
-4. Choose whether to save to media library
-5. Click "Generate Image"
-6. The AI will generate your image (uses 1 credit)
-
-**Example Prompt:**
-```
-A peaceful mountain landscape at sunset with a crystal clear lake in the 
-foreground, pine trees on the sides, and snow-capped peaks in the background. 
-Photorealistic style.
+瞑想がメンタルヘルスに与える効果について包括的な記事を書いてください。
+科学的研究、初心者向けの実践的なヒント、よくある誤解への対処を含めてください。
+読みやすく、約1000語程度の記事をお願いします。
 ```
 
-### Purchase Credits
+### 画像を生成する
 
-1. Go to **AI Content → Purchase Credits**
-2. Choose between Article Credits or Image Credits
-3. Click "Purchase Now"
-4. Complete the payment through Stripe
-5. Credits are automatically added to your account
+1. **AI コンテンツ → 画像を生成** にアクセス
+2. 生成したい画像について詳しく説明
+3. 画像サイズを選択（正方形、縦長、横長）
+4. メディアライブラリに自動保存するかどうか選択
+5. **画像を生成する** をクリック
+6. AIが画像を生成します（1クレジット消費）
 
-## Database Tables
+**プロンプトの例：**
+```
+夕日に照らされた静かな山々の風景。手前には透き通った湖がある。
+両側に松の木がそびえたち、背景には雪に覆われた山頂が見える。
+フォトリアルなスタイルで。
+```
 
-The plugin creates three database tables:
+### 記事をリライトする
 
-1. **wp_rakubun_user_credits**: Stores user credit balances
-2. **wp_rakubun_transactions**: Logs all payment transactions
-3. **wp_rakubun_generated_content**: Records all generated content
+1. **AI コンテンツ → 自動リライト** にアクセス
+2. リライト対象の記事を選択
+3. リライトの頻度とタイミングを設定
+4. 自動リライトを有効化
+5. AIが定期的に記事を改善します
 
-## API Usage
+### クレジットを購入する
 
-### OpenAI Models Used
+1. **AI コンテンツ → クレジット購入** にアクセス
+2. 記事用または画像用クレジットから選択
+3. パッケージを選択して **購入する** をクリック
+4. Stripeで支払いを完了
+5. クレジットが自動的にアカウントに追加されます
 
-- **Articles**: GPT-4 (gpt-4)
-- **Images**: DALL-E 3 (dall-e-3)
+## データベーステーブル
 
-### Rate Limits
+プラグインは以下の3つのデータベーステーブルを作成します：
 
-Be aware of OpenAI's rate limits and pricing:
-- GPT-4: Token-based pricing
-- DALL-E 3: Per-image pricing
+1. **wp_rakubun_user_credits**: ユーザーのクレジット残高を保存
+2. **wp_rakubun_transactions**: すべての支払い取引を記録
+3. **wp_rakubun_generated_content**: 生成されたコンテンツの記録
 
-Refer to [OpenAI Pricing](https://openai.com/pricing) for current rates.
+## API仕様
 
-## Security
+### 使用するOpenAIモデル
 
-The plugin implements several security measures:
+- **記事生成**: GPT-4 (gpt-4)
+- **画像生成**: DALL-E 3 (dall-e-3)
+- **リライト**: GPT-4 (gpt-4)
 
-- WordPress nonces for AJAX requests
-- Input sanitization and validation
-- Secure API key storage
-- User capability checks
-- SQL injection prevention
+### 料金と利用制限
 
-## Troubleshooting
+OpenAIの利用制限と価格については、[OpenAI 料金ページ](https://openai.com/pricing) をご確認ください：
+- **GPT-4**: トークンベースの料金
+- **DALL-E 3**: 1画像ごとの料金
 
-### "OpenAI API key is not configured" error
-- Ensure you've entered your API key in Settings
-- Verify the API key is valid and active
+## セキュリティ
 
-### "Stripe secret key is not configured" error
-- Enter both Stripe Publishable and Secret keys in Settings
-- Ensure you're using the correct mode (test/live)
+プラグインは以下のセキュリティ対策を実装しています：
 
-### Image generation fails
-- Check that your prompt is detailed and specific
-- Ensure your OpenAI account has credits
-- DALL-E 3 may reject prompts that violate content policy
+- WordPressのノンス（nonce）によるAJAXリクエスト保護
+- 入力値のサニタイズと検証
+- APIキーの安全な管理
+- ユーザー権限チェック
+- SQLインジェクション対策
+- 外部ダッシュボードによる一元化されたキー管理
 
-### Article generation is slow
-- GPT-4 generation can take 30-60 seconds
-- Ensure your server timeout settings allow sufficient time
-- Check your internet connection
+## トラブルシューティング
 
-## Support
+### 「プラグインがダッシュボードに接続されていません」というエラーが出る
+- **AI コンテンツ → 設定** でプラグイン登録を完了してください
+- 数秒待ってページをリロードしてください
 
-For issues and feature requests, please visit:
-[GitHub Repository](https://github.com/brocketdesign/rakubun-wordpress-plugin)
+### 「記事生成クレジットが不足しています」と表示される
+- **AI コンテンツ → クレジット購入** からクレジットを購入してください
+- 新規ユーザーは3つの無料クレジットで試すことができます
 
-## License
+### 画像生成に失敗する
+- プロンプトがより詳細で具体的であることを確認してください
+- OpenAIアカウントがクレジット不足になっていないか確認してください
+- DALL-E 3はポリシー違反と判断されたプロンプトを拒否することがあります
 
-This plugin is licensed under the GPL-2.0+ license.
+### 記事生成が遅い
+- GPT-4の生成は30～60秒かかることがあります
+- サーバーのタイムアウト設定が十分な時間を許可していることを確認してください
+- インターネット接続を確認してください
 
-## Credits
+## サポート
 
-Developed by Brocket Design
+問題や機能リクエストは以下をご利用ください：
+[GitHub リポジトリ](https://github.com/brocketdesign/rakubun-wordpress-plugin)
 
-Powered by:
-- OpenAI GPT-4 and DALL-E 3
-- Stripe Payment Processing
+## ライセンス
 
-## Changelog
+このプラグインはGPL-2.0+ライセンスの下でライセンスされています。
+
+## クレジット
+
+Brocket Design により開発
+
+提供技術：
+- OpenAI GPT-4 と DALL-E 3
+- Stripe 決済処理
+
+## 変更履歴
+
+詳細は [CHANGELOG.md](CHANGELOG.md) をご参照ください。
 
 ### Version 1.0.0
 - Initial release
