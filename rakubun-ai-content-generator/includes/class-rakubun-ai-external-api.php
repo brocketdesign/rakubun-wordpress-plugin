@@ -1,308 +1,431 @@
 <?php
 /**
- * Handles communication with external Rakubun admin dashboard
+ * External Dashboard API Client
+ * 
+ * Communicates with external dashboard at app.rakubun.com
+ * Dashboard is the single source of truth for credits and payments
  */
 class Rakubun_AI_External_API {
 
-    /**
-     * Base URL for external API
-     */
     private $base_url = 'https://app.rakubun.com/api/v1';
-
-    /**
-     * Plugin instance ID (unique identifier for this WordPress installation)
-     */
     private $instance_id;
-
-    /**
-     * API token for authentication
-     */
     private $api_token;
+    private $site_url;
+    private $plugin_version;
 
-    /**
-     * Constructor
-     */
     public function __construct() {
-        $this->instance_id = $this->get_or_create_instance_id();
-        $this->api_token = get_option('rakubun_ai_api_token', '');
+        $this->instance_id = get_option('rakubun_ai_instance_id');
+        $this->api_token = get_option('rakubun_ai_api_token');
+        $this->site_url = get_site_url();
+        $this->plugin_version = defined('RAKUBUN_AI_VERSION') ? RAKUBUN_AI_VERSION : '1.0.0';
     }
 
-    /**
-     * Get or create unique instance ID for this WordPress installation
-     */
-    private function get_or_create_instance_id() {
-        $instance_id = get_option('rakubun_ai_instance_id');
-        
-        if (!$instance_id) {
-            $instance_id = wp_generate_uuid4();
-            update_option('rakubun_ai_instance_id', $instance_id);
+    public function is_connected() {
+        return !empty($this->api_token) && !empty($this->instance_id);
+    }
+
+    public function test_connection() {
+        if (!$this->is_connected()) {
+            return false;
         }
-        
-        return $instance_id;
+
+        // Try to fetch packages as a simple connection test
+        $response = $this->make_request('GET', '/packages');
+        return !empty($response['success']);
     }
 
-    /**
-     * Register this plugin instance with external dashboard
-     */
     public function register_plugin() {
-        $blog_info = $this->get_blog_info();
-        
-        $response = $this->make_request('POST', '/plugins/register', $blog_info);
-        
-        if ($response && isset($response['api_token'])) {
-            update_option('rakubun_ai_api_token', $response['api_token']);
-            update_option('rakubun_ai_registration_status', 'registered');
-            $this->api_token = $response['api_token'];
-            return true;
+        if (empty($this->instance_id)) {
+            $this->instance_id = wp_generate_uuid4();
+            update_option('rakubun_ai_instance_id', $this->instance_id);
         }
-        
-        update_option('rakubun_ai_registration_status', 'failed');
-        return false;
-    }
 
-    /**
-     * Get blog information for registration
-     */
-    private function get_blog_info() {
-        global $wpdb;
-        
-        // Count posts and pages
-        $post_counts = wp_count_posts();
-        $page_counts = wp_count_posts('page');
-        
-        // Count media items
-        $media_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'");
-        
-        // Get plugin usage statistics
-        $article_generations = $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->prefix}rakubun_generated_content WHERE content_type = 'article'"
-        );
-        $image_generations = $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->prefix}rakubun_generated_content WHERE content_type = 'image'"
-        );
-        
-        return array(
+        $data = array(
             'instance_id' => $this->instance_id,
-            'site_url' => get_site_url(),
+            'site_url' => $this->site_url,
             'site_title' => get_bloginfo('name'),
             'admin_email' => get_option('admin_email'),
             'wordpress_version' => get_bloginfo('version'),
-            'plugin_version' => RAKUBUN_AI_VERSION,
-            'php_version' => PHP_VERSION,
+            'plugin_version' => $this->plugin_version,
+            'php_version' => phpversion(),
             'theme' => wp_get_theme()->get('Name'),
             'timezone' => wp_timezone_string(),
             'language' => get_locale(),
-            'post_count' => (int) $post_counts->publish,
-            'page_count' => (int) $page_counts->publish,
-            'media_count' => (int) $media_count,
-            'article_generations' => (int) $article_generations ?: 0,
-            'image_generations' => (int) $image_generations ?: 0,
-            'activation_date' => get_option('rakubun_ai_activation_date', current_time('mysql')),
+            'post_count' => intval(wp_count_posts()->publish ?? 0),
+            'page_count' => intval(wp_count_posts('page')->publish ?? 0),
+            'activation_date' => current_time('mysql'),
             'last_activity' => current_time('mysql')
         );
-    }
 
-    /**
-     * Check user credits from external API
-     */
-    public function get_user_credits($user_id) {
-        $user = get_userdata($user_id);
-        if (!$user) {
-            return false;
+        $response = $this->make_request('POST', '/plugins/register', $data, false);
+
+        if (!empty($response['success']) && !empty($response['api_token'])) {
+            $this->api_token = $response['api_token'];
+            update_option('rakubun_ai_api_token', $this->api_token);
+            update_option('rakubun_ai_instance_id', $this->instance_id);
+            if (!empty($response['webhook_secret'])) {
+                update_option('rakubun_ai_webhook_secret', $response['webhook_secret']);
+            }
+            error_log('Rakubun AI: Registered with dashboard. Instance: ' . $this->instance_id);
+            return true;
         }
 
-        $response = $this->make_request('GET', '/users/credits', array(
-            'user_email' => $user->user_email,
-            'user_id' => $user_id,
-            'site_url' => get_site_url()
-        ));
-
-        if ($response && isset($response['credits'])) {
-            return array(
-                'article_credits' => (int) $response['credits']['article_credits'],
-                'image_credits' => (int) $response['credits']['image_credits'],
-                'rewrite_credits' => (int) $response['credits']['rewrite_credits']
-            );
-        }
-
+        error_log('Rakubun AI: Registration failed: ' . wp_json_encode($response));
         return false;
     }
 
-    /**
-     * Deduct credits from external API
-     */
-    public function deduct_credits($user_id, $credit_type, $amount = 1) {
-        $user = get_userdata($user_id);
+    public function get_user_credits($user_id) {
+        if (!$this->is_connected()) {
+            error_log('Rakubun: Not connected to external API');
+            return null;
+        }
+
+        $user = get_user_by('id', $user_id);
         if (!$user) {
-            return false;
+            error_log('Rakubun: User not found: ' . $user_id);
+            return null;
+        }
+
+        error_log('Rakubun: Fetching credits for user ' . $user_id . ' (' . $user->user_email . ')');
+        
+        $response = $this->make_request('GET', '/users/credits', array(
+            'user_id' => $user_id,
+            'user_email' => $user->user_email,
+            'site_url' => $this->site_url
+        ));
+
+        error_log('Rakubun: API Response for /users/credits: ' . wp_json_encode($response));
+
+        if (!empty($response['success']) && !empty($response['credits'])) {
+            $credits = array(
+                'article_credits' => intval($response['credits']['article_credits'] ?? 0),
+                'image_credits' => intval($response['credits']['image_credits'] ?? 0),
+                'rewrite_credits' => intval($response['credits']['rewrite_credits'] ?? 0)
+            );
+            error_log('Rakubun: Credits fetched successfully: ' . wp_json_encode($credits));
+            return $credits;
+        }
+
+        error_log('Rakubun: API did not return credits data. Response: ' . wp_json_encode($response));
+        return null;
+    }
+
+    public function deduct_credits($user_id, $credit_type, $amount = 1) {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            return null;
         }
 
         $response = $this->make_request('POST', '/users/deduct-credits', array(
-            'user_email' => $user->user_email,
             'user_id' => $user_id,
-            'site_url' => get_site_url(),
+            'user_email' => $user->user_email,
+            'site_url' => $this->site_url,
             'credit_type' => $credit_type,
-            'amount' => $amount
+            'amount' => intval($amount)
         ));
 
-        return $response && isset($response['success']) && $response['success'];
-    }
-
-    /**
-     * Get OpenAI API configuration
-     */
-    public function get_openai_config() {
-        $response = $this->make_request('GET', '/config/openai');
-        
-        if ($response && isset($response['api_key'])) {
+        if (!empty($response['success'])) {
             return array(
-                'api_key' => $response['api_key'],
-                'model_article' => $response['model_article'] ?? 'gpt-4',
-                'model_image' => $response['model_image'] ?? 'dall-e-3',
-                'max_tokens' => $response['max_tokens'] ?? 2000,
-                'temperature' => $response['temperature'] ?? 0.7
+                'remaining_credits' => $response['remaining_credits'] ?? array(),
+                'transaction_id' => $response['transaction_id'] ?? null
             );
         }
 
-        return false;
+        return null;
     }
 
-    /**
-     * Get package pricing from external API
-     */
     public function get_packages() {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $cache_key = 'rakubun_ai_packages_cache';
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
         $response = $this->make_request('GET', '/packages');
-        
-        if ($response && isset($response['packages'])) {
+
+        if (!empty($response['success']) && !empty($response['packages'])) {
+            set_transient($cache_key, $response['packages'], HOUR_IN_SECONDS);
             return $response['packages'];
         }
 
-        return array();
+        return null;
     }
 
-    /**
-     * Log content generation to external API
-     */
-    public function log_generation($user_id, $content_type, $prompt, $result, $credits_used) {
-        $user = get_userdata($user_id);
+    public function get_openai_config() {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $cache_key = 'rakubun_ai_openai_config_cache';
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $response = $this->make_request('GET', '/config/article');
+
+        if (!empty($response['success']) && !empty($response['config'])) {
+            // Cache for 1 hour
+            set_transient($cache_key, $response['config'], HOUR_IN_SECONDS);
+            return $response['config'];
+        }
+
+        return null;
+    }
+
+    public function get_image_config() {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $cache_key = 'rakubun_ai_image_config_cache';
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $response = $this->make_request('GET', '/config/image');
+
+        if (!empty($response['success']) && !empty($response['config'])) {
+            // Cache for 1 hour
+            set_transient($cache_key, $response['config'], HOUR_IN_SECONDS);
+            return $response['config'];
+        }
+
+        return null;
+    }
+
+    public function get_rewrite_config() {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $cache_key = 'rakubun_ai_rewrite_config_cache';
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $response = $this->make_request('GET', '/config/rewrite');
+
+        if (!empty($response['success']) && !empty($response['config'])) {
+            // Cache for 1 hour
+            set_transient($cache_key, $response['config'], HOUR_IN_SECONDS);
+            return $response['config'];
+        }
+
+        return null;
+    }
+
+    public function get_stripe_config() {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $cache_key = 'rakubun_ai_stripe_config_cache';
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $response = $this->make_request('GET', '/config/stripe');
+
+        if (!empty($response['success']) && !empty($response['public_key'])) {
+            // Cache for 24 hours since config doesn't change often
+            set_transient($cache_key, $response['public_key'], DAY_IN_SECONDS);
+            return $response['public_key'];
+        }
+
+        return null;
+    }
+
+    public function create_payment_intent($user_id, $credit_type, $package_id, $amount) {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            return null;
+        }
+
+        $response = $this->make_request('POST', '/payments/create-intent', array(
+            'user_id' => $user_id,
+            'user_email' => $user->user_email,
+            'site_url' => $this->site_url,
+            'credit_type' => $credit_type,
+            'package_id' => $package_id,
+            'amount' => intval($amount),
+            'currency' => 'JPY',
+            'instance_id' => $this->instance_id
+        ));
+
+        if (!empty($response['success'])) {
+            return array(
+                'client_secret' => $response['client_secret'] ?? null,
+                'payment_intent_id' => $response['payment_intent_id'] ?? null,
+                'amount' => intval($response['amount'] ?? $amount),
+                'currency' => $response['currency'] ?? 'JPY'
+            );
+        }
+
+        return null;
+    }
+
+    public function confirm_payment($payment_intent_id, $user_id, $credit_type) {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        $response = $this->make_request('POST', '/payments/confirm', array(
+            'payment_intent_id' => $payment_intent_id,
+            'user_id' => $user_id,
+            'credit_type' => $credit_type,
+            'site_url' => $this->site_url,
+            'instance_id' => $this->instance_id
+        ));
+
+        if (!empty($response['success'])) {
+            return array(
+                'success' => true,
+                'credits_added' => intval($response['credits_added'] ?? 0),
+                'transaction_id' => $response['transaction_id'] ?? null,
+                'remaining_credits' => $response['remaining_credits'] ?? array()
+            );
+        }
+
+        return null;
+    }
+
+    public function log_generation($user_id, $content_type, $prompt = '', $result_length = 0, $credits_used = 1) {
+        if (!$this->is_connected()) {
+            return false;
+        }
+
+        $user = get_user_by('id', $user_id);
         if (!$user) {
             return false;
         }
 
-        $this->make_request('POST', '/analytics/generation', array(
-            'user_email' => $user->user_email,
+        $data = array(
             'user_id' => $user_id,
-            'site_url' => get_site_url(),
+            'user_email' => $user->user_email,
+            'site_url' => $this->site_url,
             'content_type' => $content_type,
-            'prompt' => $prompt,
-            'result_length' => strlen($result),
-            'credits_used' => $credits_used,
+            'prompt' => substr($prompt, 0, 500),
+            'result_length' => intval($result_length),
+            'credits_used' => intval($credits_used),
             'timestamp' => current_time('mysql')
-        ));
+        );
+
+        wp_remote_post(
+            $this->base_url . '/analytics/generation',
+            array(
+                'blocking' => false,
+                'sslverify' => true,
+                'timeout' => 5,
+                'headers' => $this->get_headers(),
+                'body' => wp_json_encode($data)
+            )
+        );
 
         return true;
     }
 
-    /**
-     * Send usage analytics to external API
-     */
     public function send_analytics() {
-        global $wpdb;
-        
-        // Get usage data from last sync
-        $last_sync = get_option('rakubun_ai_last_analytics_sync', '');
-        $where_clause = $last_sync ? "WHERE created_at > %s" : "";
-        
-        $analytics_data = array();
-        
-        // Article generations
-        $query = "SELECT user_id, prompt, LENGTH(generated_content) as content_length, created_at 
-                  FROM {$wpdb->prefix}rakubun_generated_content 
-                  WHERE content_type = 'article'";
-        if ($last_sync) {
-            $query .= " AND created_at > %s";
-            $articles = $wpdb->get_results($wpdb->prepare($query, $last_sync));
-        } else {
-            $articles = $wpdb->get_results($query);
-        }
-        
-        // Image generations
-        $query = "SELECT user_id, prompt, created_at 
-                  FROM {$wpdb->prefix}rakubun_generated_content 
-                  WHERE content_type = 'image'";
-        if ($last_sync) {
-            $query .= " AND created_at > %s";
-            $images = $wpdb->get_results($wpdb->prepare($query, $last_sync));
-        } else {
-            $images = $wpdb->get_results($query);
+        if (!$this->is_connected()) {
+            return false;
         }
 
-        $analytics_data = array(
-            'site_url' => get_site_url(),
+        global $wpdb;
+        $one_hour_ago = date('Y-m-d H:i:s', time() - HOUR_IN_SECONDS);
+
+        $content_table = $wpdb->prefix . 'rakubun_generated_content';
+        $generations = $wpdb->get_results($wpdb->prepare("
+            SELECT user_id, content_type, prompt, CHAR_LENGTH(generated_content) as result_length, created_at
+            FROM $content_table
+            WHERE created_at >= %s AND status = 'completed'
+            LIMIT 200
+        ", $one_hour_ago));
+
+        $trans_table = $wpdb->prefix . 'rakubun_transactions';
+        $transactions = $wpdb->get_results($wpdb->prepare("
+            SELECT user_id, transaction_type, credit_type, credits_purchased as amount, created_at
+            FROM $trans_table
+            WHERE created_at >= %s AND status = 'completed'
+            LIMIT 100
+        ", $one_hour_ago));
+
+        $data = array(
+            'site_url' => $this->site_url,
+            'instance_id' => $this->instance_id,
             'sync_period' => array(
-                'from' => $last_sync ?: get_option('rakubun_ai_activation_date'),
+                'from' => $one_hour_ago,
                 'to' => current_time('mysql')
             ),
-            'articles' => $articles,
-            'images' => $images,
-            'total_users' => count_users()['total_users'],
-            'plugin_version' => RAKUBUN_AI_VERSION
+            'generations' => $generations ?: array(),
+            'transactions' => $transactions ?: array(),
+            'total_users' => count_users()['total_users'] ?? 0,
+            'plugin_version' => $this->plugin_version
         );
 
-        $response = $this->make_request('POST', '/analytics/usage', $analytics_data);
-        
-        if ($response && isset($response['success']) && $response['success']) {
-            update_option('rakubun_ai_last_analytics_sync', current_time('mysql'));
+        $response = $this->make_request('POST', '/analytics/usage', $data);
+
+        if (!empty($response['success'])) {
+            update_option('rakubun_ai_last_sync', current_time('mysql'));
             return true;
         }
 
         return false;
     }
 
-    /**
-     * Check if plugin is registered and connected
-     */
-    public function is_connected() {
-        return !empty($this->api_token) && get_option('rakubun_ai_registration_status') === 'registered';
-    }
-
-    /**
-     * Test connection to external API
-     */
-    public function test_connection() {
-        $response = $this->make_request('GET', '/health');
-        return $response && isset($response['status']) && $response['status'] === 'ok';
-    }
-
-    /**
-     * Make HTTP request to external API
-     */
-    private function make_request($method, $endpoint, $data = array()) {
-        $url = $this->base_url . $endpoint;
-        
-        $headers = array(
-            'Content-Type' => 'application/json',
-            'User-Agent' => 'Rakubun-WordPress-Plugin/' . RAKUBUN_AI_VERSION,
-            'X-Instance-ID' => $this->instance_id
-        );
-
-        if ($this->api_token) {
-            $headers['Authorization'] = 'Bearer ' . $this->api_token;
+    public static function schedule_analytics_sync() {
+        if (!wp_next_scheduled('rakubun_ai_sync_analytics')) {
+            wp_schedule_event(time(), 'hourly', 'rakubun_ai_sync_analytics');
         }
+    }
+
+    private function get_headers() {
+        return array(
+            'Authorization' => 'Bearer ' . $this->api_token,
+            'Content-Type' => 'application/json',
+            'X-Instance-ID' => $this->instance_id,
+            'User-Agent' => 'Rakubun-WordPress-Plugin/' . $this->plugin_version
+        );
+    }
+
+    private function make_request($method, $endpoint, $data = array(), $require_auth = true) {
+        $url = $this->base_url . $endpoint;
 
         $args = array(
             'method' => $method,
-            'headers' => $headers,
-            'timeout' => 30,
+            'timeout' => 15,
             'sslverify' => true
         );
 
-        if (!empty($data)) {
-            if ($method === 'GET') {
-                $url .= '?' . http_build_query($data);
-            } else {
-                $args['body'] = json_encode($data);
+        if ($require_auth && $this->is_connected()) {
+            $args['headers'] = $this->get_headers();
+        } else {
+            $args['headers'] = array(
+                'Content-Type' => 'application/json',
+                'User-Agent' => 'Rakubun-WordPress-Plugin/' . $this->plugin_version
+            );
+        }
+
+        if ($method === 'GET') {
+            if (!empty($data)) {
+                $url = add_query_arg($data, $url);
             }
+        } else {
+            $args['body'] = wp_json_encode($data);
         }
 
         $response = wp_remote_request($url, $args);
@@ -314,76 +437,161 @@ class Rakubun_AI_External_API {
 
         $status_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
+        $decoded = json_decode($body, true);
 
-        if ($status_code >= 200 && $status_code < 300) {
-            return json_decode($body, true);
+        if ($status_code >= 400) {
+            error_log('Rakubun API Error [' . $status_code . ']: ' . $body);
         }
 
-        error_log('Rakubun API HTTP Error: ' . $status_code . ' - ' . $body);
-        return false;
+        return $decoded ?: array('success' => false);
     }
 
-    /**
-     * Handle webhook from external dashboard
-     */
-    public function handle_webhook($data) {
-        // Verify webhook signature if needed
-        if (!$this->verify_webhook_signature($data)) {
+    public static function verify_webhook_signature($payload, $signature) {
+        $secret = get_option('rakubun_ai_webhook_secret');
+        if (empty($secret)) {
             return false;
         }
+        $hash = hash_hmac('sha256', $payload, $secret);
+        return hash_equals($hash, $signature);
+    }
 
-        switch ($data['event']) {
-            case 'config_updated':
-                // Refresh cached configuration
-                delete_transient('rakubun_ai_openai_config');
-                delete_transient('rakubun_ai_packages');
-                break;
-                
-            case 'credits_updated':
-                // Clear credit cache for specific user
-                if (isset($data['user_email'])) {
-                    $user = get_user_by('email', $data['user_email']);
-                    if ($user) {
-                        delete_transient('rakubun_ai_credits_' . $user->ID);
-                    }
-                }
-                break;
-                
-            case 'plugin_disabled':
-                // Disable plugin functionality
-                update_option('rakubun_ai_status', 'disabled');
-                break;
-                
-            case 'plugin_enabled':
-                // Enable plugin functionality
-                update_option('rakubun_ai_status', 'enabled');
-                break;
+    /**
+     * Development Test: Article Configuration
+     * Tests if article generation configuration is available from dashboard
+     * Does NOT generate any articles
+     */
+    public function test_article_configuration() {
+        if (!$this->is_connected()) {
+            return array(
+                'success' => false,
+                'error' => 'not_connected',
+                'message' => 'Plugin is not connected to dashboard'
+            );
         }
 
-        return true;
-    }
-
-    /**
-     * Verify webhook signature (implement based on your security requirements)
-     */
-    private function verify_webhook_signature($data) {
-        // Implement webhook signature verification if needed
-        return true;
-    }
-
-    /**
-     * Schedule regular analytics sync
-     */
-    public static function schedule_analytics_sync() {
-        if (!wp_next_scheduled('rakubun_ai_sync_analytics')) {
-            wp_schedule_event(time(), 'daily', 'rakubun_ai_sync_analytics');
+        $response = $this->make_request('GET', '/config/article');
+        
+        if (!$response || empty($response['success'])) {
+            return array(
+                'success' => false,
+                'error' => 'api_error',
+                'message' => 'Failed to fetch article configuration',
+                'response' => $response
+            );
         }
+
+        return array(
+            'success' => true,
+            'message' => 'Article configuration retrieved successfully',
+            'config' => $response['config'] ?? array(),
+            'models' => $response['models'] ?? array(),
+            'has_api_key' => !empty($response['config']['api_key']),
+            'model' => $response['config']['model'] ?? 'unknown'
+        );
     }
 
     /**
-     * Clear scheduled analytics sync
+     * Development Test: Image Configuration
+     * Tests if image generation configuration is available from dashboard
+     * Does NOT generate any images
      */
-    public static function clear_scheduled_sync() {
-        wp_clear_scheduled_hook('rakubun_ai_sync_analytics');
+    public function test_image_configuration() {
+        if (!$this->is_connected()) {
+            return array(
+                'success' => false,
+                'error' => 'not_connected',
+                'message' => 'Plugin is not connected to dashboard'
+            );
+        }
+
+        $response = $this->make_request('GET', '/config/image');
+        
+        if (!$response || empty($response['success'])) {
+            return array(
+                'success' => false,
+                'error' => 'api_error',
+                'message' => 'Failed to fetch image configuration',
+                'response' => $response
+            );
+        }
+
+        return array(
+            'success' => true,
+            'message' => 'Image configuration retrieved successfully',
+            'config' => $response['config'] ?? array(),
+            'models' => $response['models'] ?? array(),
+            'has_api_key' => !empty($response['config']['api_key']),
+            'model' => $response['config']['model'] ?? 'unknown'
+        );
+    }
+
+    /**
+     * Development Test: Rewrite Configuration
+     * Tests if rewrite/auto-rewriter configuration is available from dashboard
+     * Does NOT execute any rewrites
+     */
+    public function test_rewrite_configuration() {
+        if (!$this->is_connected()) {
+            return array(
+                'success' => false,
+                'error' => 'not_connected',
+                'message' => 'Plugin is not connected to dashboard'
+            );
+        }
+
+        $response = $this->make_request('GET', '/config/rewrite');
+        
+        if (!$response || empty($response['success'])) {
+            return array(
+                'success' => false,
+                'error' => 'api_error',
+                'message' => 'Failed to fetch rewrite configuration',
+                'response' => $response
+            );
+        }
+
+        return array(
+            'success' => true,
+            'message' => 'Rewrite configuration retrieved successfully',
+            'config' => $response['config'] ?? array(),
+            'models' => $response['models'] ?? array(),
+            'has_api_key' => !empty($response['config']['api_key']),
+            'model' => $response['config']['model'] ?? 'unknown'
+        );
+    }
+
+    /**
+     * Development Test: Stripe Configuration
+     * Tests if Stripe is properly configured and ready for payments
+     */
+    public function test_stripe_configuration() {
+        if (!$this->is_connected()) {
+            return array(
+                'success' => false,
+                'error' => 'not_connected',
+                'message' => 'Plugin is not connected to dashboard'
+            );
+        }
+
+        $stripe_key = $this->get_stripe_config();
+        
+        if (!$stripe_key) {
+            return array(
+                'success' => false,
+                'error' => 'no_stripe_key',
+                'message' => 'Stripe public key not available from dashboard'
+            );
+        }
+
+        // Verify the key format (Stripe public keys start with pk_)
+        $is_valid_format = strpos($stripe_key, 'pk_') === 0;
+        
+        return array(
+            'success' => true,
+            'message' => 'Stripe configuration is ready',
+            'stripe_public_key' => substr($stripe_key, 0, 10) . '...' . substr($stripe_key, -4), // Masked for security
+            'is_valid_format' => $is_valid_format,
+            'status' => $is_valid_format ? 'ready' : 'invalid_format'
+        );
     }
 }

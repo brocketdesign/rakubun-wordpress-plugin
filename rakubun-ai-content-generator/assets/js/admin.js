@@ -12,9 +12,24 @@
 
     // Initialize Stripe when document is ready
     $(document).ready(function() {
-        // Initialize Stripe if on purchase page
-        if ($('#rakubun-payment-form').length && rakubunAI.stripe_public_key) {
-            initializeStripe();
+        // Initialize Stripe if on purchase page and connected
+        if ($('#rakubun-payment-form').length) {
+            // Check if plugin is connected to external dashboard
+            if (rakubunAI.is_connected) {
+                // For dashboard-managed payments, we still need to initialize Stripe
+                // The public key will be used for card element creation
+                if (rakubunAI.stripe_public_key) {
+                    initializeStripe();
+                } else {
+                    // Fallback: Try to fetch Stripe config from dashboard or show warning
+                    console.warn('Stripe public key not configured. Payments may not work correctly.');
+                    console.log('Plugin is connected to dashboard. Payment intent will be created server-side.');
+                    // Still try to initialize in case it's needed
+                    initializeStripe();
+                }
+            } else {
+                console.error('Plugin is not connected to dashboard. Please register in settings.');
+            }
         }
 
         // Initialize dashboard features
@@ -35,23 +50,32 @@
         });
     });
 
-    /**
-     * Initialize Stripe
-     */
-    function initializeStripe() {
-        if (typeof Stripe === 'undefined') {
-            console.error('Stripe.js not loaded');
-            return;
-        }
-
-        try {
-            stripe = Stripe(rakubunAI.stripe_public_key);
-            const elements = stripe.elements();
-            cardElement = elements.create('card');
-        } catch (error) {
-            console.error('Error initializing Stripe:', error);
-        }
+/**
+ * Initialize Stripe
+ */
+function initializeStripe() {
+    if (typeof Stripe === 'undefined') {
+        console.error('Stripe.js library is not loaded');
+        return;
     }
+
+    // If we don't have a Stripe public key, we cannot initialize
+    if (!rakubunAI.stripe_public_key) {
+        console.error('Stripe public key is not configured. Payment system cannot be initialized.');
+        return;
+    }
+
+    try {
+        stripe = Stripe(rakubunAI.stripe_public_key);
+        const elements = stripe.elements();
+        cardElement = elements.create('card');
+        console.log('Stripe initialized successfully');
+    } catch (error) {
+        console.error('Error initializing Stripe:', error);
+        stripe = null;
+        cardElement = null;
+    }
+}
 
     /**
      * Generate Article
@@ -167,89 +191,82 @@
     }
 
     /**
-     * Initiate Payment
+     * Initiate Payment - Redirect to Stripe Checkout
      */
-    window.rakubunInitiatePayment = function(type, amount) {
-        if (!stripe) {
-            alert('決済システムが正しく設定されていません。管理者にお問い合わせください。');
+    window.rakubunInitiatePayment = function(packageId, amount) {
+        if (!rakubunAI.is_connected) {
+            alert('プラグインがダッシュボードに接続されていません。');
             return;
         }
 
-        currentPaymentType = type;
+        currentPaymentType = packageId;
         currentPaymentAmount = amount;
 
-        // Show payment form
+        // Show checkout container and hide all pricing sections
         $('.rakubun-pricing').hide();
-        $('#rakubun-payment-form').show();
+        $('.rakubun-rewrite-packages').hide();
+        $('.rakubun-pricing-navigation').hide();
+        $('#rakubun-checkout-container').show();
         
-        // Mount card element if not already mounted
-        if (cardElement && !cardElement._mounted) {
-            cardElement.mount('#rakubun-stripe-card-element');
-            cardElement._mounted = true;
-        }
-
-        // Setup payment button
-        $('#rakubun-payment-submit').off('click').on('click', processPayment);
-    };
-
-    /**
-     * Cancel Payment
-     */
-    window.rakubunCancelPayment = function() {
-        $('#rakubun-payment-form').hide();
-        $('.rakubun-pricing').show();
-        $('#rakubun-card-errors').hide();
-    };
-
-    /**
-     * Process Payment
-     */
-    function processPayment() {
-        $('#rakubun-payment-loading').show();
-        $('#rakubun-payment-submit').prop('disabled', true);
-
-        stripe.createPaymentMethod({
-            type: 'card',
-            card: cardElement,
-        }).then(function(result) {
-            if (result.error) {
-                $('#rakubun-payment-loading').hide();
-                $('#rakubun-payment-submit').prop('disabled', false);
-                showError('#rakubun-card-errors', result.error.message);
-            } else {
-                // Create payment intent via backend
-                createPaymentIntent(result.paymentMethod.id);
-            }
+        // Scroll to checkout
+        $('html, body').animate({
+            scrollTop: $('#rakubun-checkout-container').offset().top - 100
+        }, 300);
+        
+        // Setup checkout button
+        $('#rakubun-checkout-button').off('click').on('click', function() {
+            initiateStripeCheckout(packageId, amount);
         });
-    }
+    };
 
     /**
-     * Create Payment Intent
+     * Cancel Checkout
      */
-    function createPaymentIntent(paymentMethodId) {
-        // First, create a payment intent on the server
+    window.rakubunCancelCheckout = function() {
+        $('#rakubun-checkout-container').hide();
+        $('.rakubun-pricing').show();
+        $('.rakubun-rewrite-packages').show();
+        $('.rakubun-pricing-navigation').show();
+        
+        // Scroll back to top
+        $('html, body').animate({
+            scrollTop: 0
+        }, 300);
+    };
+
+    /**
+     * Initiate Stripe Checkout Session
+     */
+    function initiateStripeCheckout(packageId, amount) {
+        $('#rakubun-checkout-button').prop('disabled', true);
+        $('#rakubun-payment-loading').show();
+
         $.ajax({
             url: rakubunAI.ajaxurl,
             type: 'POST',
             data: {
-                action: 'rakubun_create_payment_intent',
+                action: 'rakubun_create_checkout_session',
                 nonce: rakubunAI.nonce,
-                credit_type: currentPaymentType
+                package_id: packageId,
+                amount: amount
             },
             success: function(response) {
-                if (response.success) {
-                    // Confirm the payment with Stripe
-                    confirmPayment(response.data.client_secret, paymentMethodId, response.data.payment_intent_id);
+                if (response.success && response.data.checkout_url) {
+                    // Redirect to Stripe Checkout
+                    window.location.href = response.data.checkout_url;
                 } else {
                     $('#rakubun-payment-loading').hide();
-                    $('#rakubun-payment-submit').prop('disabled', false);
-                    showError('#rakubun-payment-error', response.data.message);
+                    $('#rakubun-checkout-button').prop('disabled', false);
+                    showError('#rakubun-payment-error', response.data?.message || 'チェックアウトセッションの作成に失敗しました。');
+                    $('#rakubun-payment-error').show();
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
                 $('#rakubun-payment-loading').hide();
-                $('#rakubun-payment-submit').prop('disabled', false);
-                showError('#rakubun-payment-error', '決済の作成に失敗しました。もう一度お試しください。');
+                $('#rakubun-checkout-button').prop('disabled', false);
+                showError('#rakubun-payment-error', 'エラーが発生しました。もう一度お試しください。');
+                $('#rakubun-payment-error').show();
+                console.error('Checkout error:', error);
             }
         });
     }

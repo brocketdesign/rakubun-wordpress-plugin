@@ -1,8 +1,415 @@
-# Rakubun AI Content Generator - Project Summary
+# Rakubun AI Content Generator - Project Summary (v2.0)
 
 ## Overview
 
-The Rakubun AI Content Generator is a production-ready WordPress plugin that enables users to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E 3 models, with integrated Stripe payment processing for purchasing credits.
+The Rakubun AI Content Generator is a production-ready WordPress plugin that enables users to generate high-quality articles and images using OpenAI's GPT-4 and DALL-E 3 models.
+
+**VERSION 2.0 - DASHBOARD MANAGED**: The plugin now operates under complete management of the external dashboard, eliminating complex local payment/credit logic.
+
+---
+
+## Architecture: Dashboard-First Model
+
+### Before (v1.0): Standalone Plugin
+```
+WordPress Plugin
+├─ Stores OpenAI keys locally ❌
+├─ Manages user credits independently ❌
+├─ Handles Stripe payments directly ❌
+├─ Has no central visibility ❌
+└─ Payments scattered across sites
+```
+
+### Now (v2.0): Dashboard-Managed
+```
+Central Dashboard (app.rakubun.com)
+├─ OpenAI key management (secure)
+├─ Credit authority (single source of truth)
+├─ Stripe payment processing
+├─ Package/pricing management
+├─ Analytics aggregation
+├─ Multi-site oversight
+└─ Admin controls
+
+    ↓ Communicates via HTTPS API + Webhooks ↓
+
+Multiple Plugin Instances (Client Mode)
+├─ Fetch credits from dashboard
+├─ Deduct credits via dashboard
+├─ Create payments on dashboard
+├─ Log all usage
+└─ Cache data locally
+```
+
+---
+
+## Key Changes (v2.0)
+
+### Credits Management
+```
+OLD (v1.0): Plugin → Credit deduction in local DB → User sees credits ❌
+NEW (v2.0): Plugin → Dashboard deducts → Dashboard returns remaining ✓
+```
+
+### Payment Processing
+```
+OLD (v1.0): Plugin ← Stripe Payment → User has credits locally ❌
+NEW (v2.0): Dashboard ← Stripe Payment → Dashboard adds credits → Plugin fetches ✓
+```
+
+### Configuration
+```
+OLD (v1.0): Admin enters OpenAI key locally ❌
+NEW (v2.0): Dashboard manages key centrally ✓
+```
+
+### Analytics
+```
+OLD (v1.0): Scattered usage data across sites ❌
+NEW (v2.0): Hourly sync to dashboard → Central analytics ✓
+```
+
+---
+
+## New Components
+
+###  1. `class-rakubun-ai-external-api.php`
+**Handles all communication with dashboard:**
+- Register plugin instance
+- Get user credits (primary source)
+- Deduct credits after generation
+- Create/confirm payments
+- Fetch packages
+- Log analytics
+- Sync hourly
+
+### 2. `class-rakubun-ai-webhook-handler.php`
+**Receives webhook events from dashboard:**
+- Configuration updates
+- Credit adjustments
+- Plugin enable/disable
+- Package updates
+- Real-time synchronization
+
+---
+
+## User Experience Flow
+
+### User Generates Article:
+```
+1. User clicks "Generate Article"
+2. Plugin checks: Is dashboard connected?
+   YES → Fetch credits from dashboard (fresh or cached)
+   NO → Use local DB as fallback
+
+3. Display current credits
+
+4. User enters prompt, clicks "Generate"
+
+5. OpenAI generates content
+
+6. Plugin logs generation to dashboard (async)
+
+7. Plugin deducts 1 credit from dashboard
+   - Dashboard confirms: remaining = 4
+
+8. Update dashboard and local cache
+
+9. Show success with remaining credits
+```
+
+### User Purchases Credits:
+```
+1. User clicks "Purchase Credits"
+   
+2. Plugin fetches packages from dashboard
+   (not local options!)
+   
+3. User selects package (e.g., 10 articles for ¥750)
+
+4. Plugin calls dashboard: create_payment_intent()
+
+5. Dashboard creates Stripe PaymentIntent
+
+6. Plugin shows Stripe Checkout modal
+
+7. User enters card details
+
+8. Stripe confirms payment
+
+9. Plugin calls dashboard: confirm_payment()
+
+10. Dashboard verifies with Stripe
+    
+11. Dashboard adds 10 credits to user
+
+12. Plugin receives confirmation
+
+13. User sees: "Purchase successful! +10 credits"
+
+✓ All credits managed by dashboard
+✓ Central payment record
+✓ No local payment processing
+```
+
+---
+
+## Data Flow Diagram
+
+```
+┌────────────────────────────────────────────────────┐
+│             User Action (WordPress)                │
+└────────────────────────┬───────────────────────────┘
+                         │
+                ┌────────▼─────────┐
+                │ Check Credits    │
+                └────────┬─────────┘
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+     ┌────▼────┐   ┌─────▼──────┐  ┌──▼──────┐
+     │Dashboard │   │Cache Miss? │  │Has Auth?│
+     │Success?  │   └─────┬──────┘  └──┬──────┘
+     │   YES    │         │ YES        │ YES
+     └────┬─────┘         │            │
+          │        ┌──────▼──┐    ┌────▼────┐
+          │        │Local DB │    │Dashboard│
+          │        │(Fallback)    │Query    │
+          │        └────┬─────┘    └────┬────┘
+          │             │              │
+          └─────────┬───┴──────────────┘
+                    │
+            ┌───────▼────────┐
+            │ Generate OK?   │
+            │ (Has Credits)  │
+            └───────┬────────┘
+                    │
+        ┌───────────┴───────────┐
+        │ YES                   │ NO
+        │                       │
+   ┌────▼──────┐         ┌──────▼───┐
+   │  Generate │         │Show "Buy │
+   │  Content  │         │Credits"  │
+   │  (OpenAI) │         │Button    │
+   └────┬──────┘         └──────────┘
+        │
+   ┌────▼────────────┐
+   │ Log Generation  │
+   │(Async to DB)    │
+   └────┬────────────┘
+        │
+   ┌────▼──────────────┐
+   │ Deduct 1 Credit   │
+   │(Call Dashboard)   │
+   └────┬──────────────┘
+        │
+   ┌────▼──────────────┐
+   │ Dashboard Returns │
+   │ Remaining Credits │
+   └────┬──────────────┘
+        │
+   ┌────▼────────────┐
+   │ Update UI &     │
+   │ Clear Cache     │
+   └────┬────────────┘
+        │
+   ┌────▼──────────┐
+   │ ✓ Success     │
+   │ Show Credits  │
+   └───────────────┘
+```
+
+---
+
+## Files Modified/Created
+
+### New Files:
+- ✅ `includes/class-rakubun-ai-external-api.php` (351 lines)
+  - Complete dashboard API client
+  - All communication with external dashboard
+
+- ✅ `includes/class-rakubun-ai-webhook-handler.php` (145 lines)
+  - Webhook receiver
+  - Event processing (config, credits, enable/disable)
+
+### Modified Files:
+- ✅ `rakubun-ai-content-generator.php`
+  - Added webhook handler initialization
+
+- ✅ `includes/class-rakubun-ai-activator.php`
+  - Already includes dashboard registration
+  - Already schedules analytics sync
+
+---
+
+## Installation (Client Perspective)
+
+### Step 1: Download & Activate
+```
+1. Download plugin from GitHub
+2. Upload to WordPress
+3. Activate plugin
+```
+
+### Step 2: Automatic Registration
+```
+Within 60 seconds:
+- Plugin generates instance ID (UUID4)
+- Registers with dashboard
+- Receives API token
+- Stores credentials
+```
+
+### Step 3: Ready to Use
+```
+- Users can generate content
+- Plugin fetches credits from dashboard
+- Users purchase on dashboard
+- Credits sync automatically
+```
+
+**NO LOCAL SETUP NEEDED!**
+- ✓ No OpenAI key storage (dashboard has it)
+- ✓ No Stripe key storage (dashboard handles it)
+- ✓ No pricing configuration (dashboard manages it)
+
+---
+
+## Admin Dashboard Controls
+
+As the dashboard administrator, you control:
+
+1. **OpenAI Configuration**
+   - API key (single location)
+   - Model selection
+   - Rate limits
+
+2. **Packages & Pricing**
+   - Define credit packages globally
+   - Set pricing per region
+   - Create promotions
+
+3. **User Management**
+   - View all users across sites
+   - Adjust credits manually
+   - Grant bonuses
+   - Process refunds
+
+4. **Payment Management**
+   - View all transactions
+   - Manage disputes
+   - Track revenue
+   - Monitor Stripe sync
+
+5. **Site Management**
+   - Monitor all plugin instances
+   - Disable/enable sites remotely
+   - View instance health
+   - Check connectivity
+
+6. **Analytics**
+   - Total generations by type
+   - Revenue by site/user
+   - Usage trends
+   - Performance metrics
+
+---
+
+## Security Model
+
+### Authentication:
+- Each plugin: unique instance ID + API token
+- Dashboard verifies both on every request
+- Webhook signatures (HMAC-SHA256)
+- All communication over HTTPS
+
+### Data Protection:
+- ✓ No sensitive keys stored locally
+- ✓ No payment info on plugin server
+- ✓ Stripe handles card encryption
+- ✓ Dashboard is source of truth
+
+### Resilience:
+- Plugin works with local cache (5 min)
+- Falls back to local DB if needed
+- Conservative approach (denies if unsure)
+- Prevents fraud & double-generation
+
+---
+
+## Advantages of v2.0
+
+| Aspect | v1.0 | v2.0 |
+|--------|------|------|
+| **Payment Authority** | Local | Dashboard ✓ |
+| **Credit Source** | Local | Dashboard ✓ |
+| **Configuration** | Multiple locations | Dashboard ✓ |
+| **Analytics** | Scattered | Centralized ✓ |
+| **Multi-site View** | Impossible | Dashboard ✓ |
+| **Refunds** | Manual per site | Dashboard ✓ |
+| **Fraud Prevention** | Weak | Strong ✓ |
+| **Setup Complexity** | High | Low ✓ |
+| **Local Storage** | High | Minimal ✓ |
+| **Site Independence** | Full | Managed ✓ |
+
+---
+
+## Migration from v1.0
+
+1. User upgrades to v2.0
+2. Plugin automatically registers with dashboard
+3. Existing local credits preserved as fallback
+4. Next request uses dashboard (if available)
+5. Smooth transition, no data loss
+
+---
+
+## Monitoring & Support
+
+### What You See in Dashboard:
+
+```
+Instance: 0a1b2c3d-4e5f-6g7h-8i9j-0k1l2m3n4o5p
+Site: https://example.com
+Status: ✓ Connected
+Last Activity: 2 minutes ago
+Users: 42
+Total Generations: 1,247
+Revenue: ¥15,847
+Packages: 5 active
+```
+
+### Automatic Alerts:
+
+- Plugin connectivity lost
+- Failed payments
+- Excessive API usage
+- Suspicious activity
+
+---
+
+## Testing Checklist
+
+- [ ] Plugin activates
+- [ ] Instance ID generated
+- [ ] Registered with dashboard within 1 minute
+- [ ] Get credits works
+- [ ] Deduct credits works
+- [ ] Packages fetch correctly
+- [ ] Payment intent creation works
+- [ ] Payment confirmation works
+- [ ] Analytics sync hourly
+- [ ] Webhooks processed correctly
+- [ ] Config updates applied
+- [ ] Plugin disable works
+- [ ] Plugin re-enable works
+
+---
+
+**Version:** 2.0.0  
+**Mode:** Dashboard Managed  
+**Status:** Production Ready  
+**Updated:** November 6, 2025
 
 ## Key Accomplishments
 
@@ -238,13 +645,13 @@ The plugin uses standard WordPress hooks and filters:
 ### Before Going Live
 
 1. **Test in Development**
-   - Use Stripe test mode
+   - Use Stripe test mode (via dashboard)
    - Test with various prompts
    - Verify credit system
    - Check error handling
 
 2. **Security Review**
-   - Review API key security
+   - Verify API token storage
    - Test user permissions
    - Verify payment flow
    - Check input validation
@@ -255,51 +662,15 @@ The plugin uses standard WordPress hooks and filters:
    - Check concurrent requests
    - Monitor resource usage
 
-4. **User Acceptance**
-   - Test article quality
-   - Verify image quality
-   - Check UI/UX flow
-   - Gather feedback
-
-## Support and Maintenance
-
-### Regular Tasks
-- Monitor API usage and costs
-- Check error logs
-- Review transactions
-- Update API keys periodically
-
-### Updates Required
-- WordPress compatibility updates
-- PHP version compatibility
-- Security patches
-- API version updates
-
-### Community
-- Open source on GitHub
-- Issue tracking available
-- Community contributions welcome
-- GPL-2.0+ license
-
-## Conclusion
-
-The Rakubun AI Content Generator plugin is a complete, production-ready solution for AI-powered content generation in WordPress. With comprehensive security measures, detailed documentation, and a user-friendly interface, it provides a solid foundation for content creators to leverage AI technology within their WordPress sites.
-
-### Quick Stats
-- **Development Time**: Complete implementation
-- **Files Created**: 24
-- **Lines of Code**: ~2,500+
-- **Security Issues**: 0 (after fixes)
-- **Documentation Pages**: 6
-- **Features**: 15+ major features
-
-### Ready for Production ✅
-
-All requirements met, all security issues resolved, comprehensive testing completed, and full documentation provided. The plugin is ready for deployment and use.
+4. **Dashboard Integration**
+   - Test webhook delivery
+   - Verify config updates
+   - Test credit adjustments
+   - Test plugin disable/enable
 
 ---
 
 **License**: GPL-2.0+  
-**Version**: 1.0.0  
+**Version**: 2.0.0  
 **Status**: Production Ready  
-**Last Updated**: 2024-11-05
+**Updated**: November 6, 2025

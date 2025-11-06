@@ -38,7 +38,7 @@ class Rakubun_AI_Admin {
         // Add timestamp for cache busting
         $version = $this->version . '.' . time();
         
-        // Enqueue Stripe.js library
+        // Enqueue Stripe.js library (required for card element and payment confirmation)
         wp_enqueue_script('stripe-js', 'https://js.stripe.com/v3/', array(), null, false);
         
         // Enqueue plugin script
@@ -51,11 +51,30 @@ class Rakubun_AI_Admin {
             header('Expires: 0');
         }
         
+        // Initialize external API to check if plugin is connected
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        $external_api = new Rakubun_AI_External_API();
+        
+        // Get Stripe public key - first try external dashboard, then local config
+        $stripe_public_key = '';
+        if ($external_api->is_connected()) {
+            $dashboard_key = $external_api->get_stripe_config();
+            if ($dashboard_key) {
+                $stripe_public_key = $dashboard_key;
+            }
+        }
+        
+        // Fallback to local config if not from dashboard
+        if (empty($stripe_public_key)) {
+            $stripe_public_key = get_option('rakubun_ai_stripe_public_key', '');
+        }
+        
         // Localize script with data
         wp_localize_script($this->plugin_name, 'rakubunAI', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('rakubun_ai_nonce'),
-            'stripe_public_key' => get_option('rakubun_ai_stripe_public_key', '')
+            'stripe_public_key' => $stripe_public_key,
+            'is_connected' => $external_api->is_connected()
         ));
     }
 
@@ -132,58 +151,123 @@ class Rakubun_AI_Admin {
      * Display dashboard page
      */
     public function display_dashboard_page() {
-        $user_id = get_current_user_id();
-        $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
-        $analytics = Rakubun_AI_Credits_Manager::get_user_analytics($user_id);
-        $recent_content = Rakubun_AI_Credits_Manager::get_recent_content($user_id, 5);
-        $user_images = Rakubun_AI_Credits_Manager::get_user_images($user_id, 20);
-        
-        include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/dashboard.php';
+        try {
+            $user_id = get_current_user_id();
+            
+            // Verify database tables exist before proceeding
+            $this->ensure_database_tables();
+            
+            // Get data with error handling
+            $credits = $this->get_credits_safely($user_id);
+            $analytics = $this->get_analytics_safely($user_id);
+            $recent_content = $this->get_recent_content_safely($user_id, 5);
+            $user_images = $this->get_user_images_safely($user_id, 20);
+            
+            include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/dashboard.php';
+        } catch (Exception $e) {
+            // Log the error and show a user-friendly message
+            error_log('Rakubun AI Dashboard Error: ' . $e->getMessage());
+            $this->display_dashboard_error();
+        }
     }
 
     /**
      * Display generate article page
      */
     public function display_generate_article_page() {
-        $user_id = get_current_user_id();
-        $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
-        
-        include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/generate-article.php';
+        try {
+            $user_id = get_current_user_id();
+            $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
+            
+            include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/generate-article.php';
+        } catch (Exception $e) {
+            error_log('Rakubun AI Generate Article Error: ' . $e->getMessage());
+            echo '<div class="wrap"><h1>記事生成</h1><div class="notice notice-error"><p>' . esc_html($e->getMessage()) . '</p></div></div>';
+        }
     }
 
     /**
      * Display generate image page
      */
     public function display_generate_image_page() {
-        $user_id = get_current_user_id();
-        $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
-        
-        include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/generate-image.php';
+        try {
+            $user_id = get_current_user_id();
+            $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
+            
+            include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/generate-image.php';
+        } catch (Exception $e) {
+            error_log('Rakubun AI Generate Image Error: ' . $e->getMessage());
+            echo '<div class="wrap"><h1>画像生成</h1><div class="notice notice-error"><p>' . esc_html($e->getMessage()) . '</p></div></div>';
+        }
     }
 
     /**
      * Display auto rewrite page
      */
     public function display_auto_rewrite_page() {
-        $user_id = get_current_user_id();
-        $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
-        
-        // Get rewriting statistics
-        $rewrite_stats = Rakubun_AI_Credits_Manager::get_rewrite_statistics($user_id);
-        $total_posts = wp_count_posts('post')->publish;
-        $rewrite_schedule = get_option('rakubun_ai_rewrite_schedule', array());
-        
-        include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/auto-rewrite.php';
+        try {
+            $user_id = get_current_user_id();
+            
+            // Verify database tables exist before proceeding
+            $this->ensure_database_tables();
+            
+            // Get data with error handling
+            $credits = $this->get_credits_safely($user_id);
+            $rewrite_stats = $this->get_rewrite_statistics_safely($user_id);
+            $total_posts = wp_count_posts('post')->publish;
+            $rewrite_schedule = get_option('rakubun_ai_rewrite_schedule', array());
+            
+            include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/auto-rewrite.php';
+        } catch (Exception $e) {
+            // Log the error and show a user-friendly message
+            error_log('Rakubun AI Auto Rewrite Page Error: ' . $e->getMessage());
+            echo '<div class="wrap"><h1>Auto Rewrite</h1><div class="notice notice-error"><p>There was an error loading the auto rewrite page. Please try again later.</p></div></div>';
+        }
     }
 
     /**
      * Display purchase page
      */
     public function display_purchase_page() {
-        $user_id = get_current_user_id();
-        $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
-        
-        include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/purchase.php';
+        try {
+            $user_id = get_current_user_id();
+            $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
+            
+            // Initialize rewrite packages with defaults
+        $rewrite_packages = array(
+            'basic' => array(
+                'name' => 'ベーシック',
+                'rewrites' => 100,
+                'price' => 9800,
+                'per_rewrite' => 98,
+                'suitable_for' => '小〜中規模サイト向け',
+                'popular' => false
+            ),
+            'premium' => array(
+                'name' => 'プレミアム',
+                'rewrites' => 500,
+                'price' => 39800,
+                'per_rewrite' => 80,
+                'suitable_for' => '中〜大規模サイト向け',
+                'discount' => '20%割引',
+                'popular' => true
+            ),
+            'enterprise' => array(
+                'name' => 'エンタープライズ',
+                'rewrites' => 2000,
+                'price' => 129800,
+                'per_rewrite' => 65,
+                'suitable_for' => '大規模サイト向け',
+                'discount' => '33%割引',
+                'popular' => false
+            )
+        );
+            
+            include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/purchase.php';
+        } catch (Exception $e) {
+            error_log('Rakubun AI Purchase Page Error: ' . $e->getMessage());
+            echo '<div class="wrap"><h1>クレジット購入</h1><div class="notice notice-error"><p>' . esc_html($e->getMessage()) . '</p></div></div>';
+        }
     }
 
     /**
@@ -359,52 +443,239 @@ class Rakubun_AI_Admin {
             wp_send_json_error(array('message' => 'Invalid request.'));
         }
 
-        // Validate credit type
-        $valid_types = array('articles', 'images', 'rewrite_starter', 'rewrite_standard', 'rewrite_premium', 'rewrite_enterprise');
-        if (!in_array($credit_type, $valid_types, true)) {
+        // Initialize external API
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        $external_api = new Rakubun_AI_External_API();
+
+        if (!$external_api->is_connected()) {
+            wp_send_json_error(array('message' => 'Plugin is not registered with dashboard.'));
+        }
+
+        // Get user email for API call
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => 'User not found.'));
+        }
+
+        // Determine package ID and credit type from the requested type
+        $package_mapping = array(
+            'articles' => array('package_id' => 'article_starter', 'credit_type' => 'article'),
+            'images' => array('package_id' => 'image_starter', 'credit_type' => 'image'),
+            'rewrite_basic' => array('package_id' => 'rewrite_starter', 'credit_type' => 'rewrite'),
+            'rewrite_premium' => array('package_id' => 'rewrite_pro', 'credit_type' => 'rewrite'),
+            'rewrite_enterprise' => array('package_id' => 'rewrite_business', 'credit_type' => 'rewrite'),
+        );
+
+        // Handle legacy package names
+        $package_mapping['article_standard'] = array('package_id' => 'article_starter', 'credit_type' => 'article');
+        $package_mapping['image_standard'] = array('package_id' => 'image_starter', 'credit_type' => 'image');
+
+        if (!isset($package_mapping[$credit_type])) {
             wp_send_json_error(array('message' => 'Invalid credit type.'));
         }
 
-        // Get pricing info
-        if ($credit_type === 'articles') {
-            $amount = intval(get_option('rakubun_ai_article_price', 750));
-            $credits = intval(get_option('rakubun_ai_articles_per_purchase', 10));
-        } elseif ($credit_type === 'images') {
-            $amount = intval(get_option('rakubun_ai_image_price', 300));
-            $credits = intval(get_option('rakubun_ai_images_per_purchase', 20));
-        } else {
-            // Handle rewrite packages
-            $rewrite_packages = array(
-                'rewrite_starter' => array('rewrites' => 50, 'price' => 3000),
-                'rewrite_standard' => array('rewrites' => 150, 'price' => 7500),
-                'rewrite_premium' => array('rewrites' => 300, 'price' => 12000),
-                'rewrite_enterprise' => array('rewrites' => 500, 'price' => 17500)
-            );
-            
-            if (isset($rewrite_packages[$credit_type])) {
-                $package = $rewrite_packages[$credit_type];
-                $amount = $package['price'];
-                $credits = $package['rewrites'];
-            } else {
-                wp_send_json_error(array('message' => 'Invalid rewrite package type.'));
+        $package_info = $package_mapping[$credit_type];
+        
+        // Get package details from external API to get the amount
+        $packages_response = $external_api->get_packages();
+        if (!$packages_response || empty($packages_response['packages'])) {
+            wp_send_json_error(array('message' => 'Unable to fetch packages from dashboard.'));
+        }
+
+        // Find the package and get its price
+        $amount = null;
+        $package_id = null;
+        foreach ($packages_response['packages'] as $pkg) {
+            if ((!empty($pkg['id']) && $pkg['id'] === $package_info['package_id']) || 
+                (!empty($pkg['package_id']) && $pkg['package_id'] === $package_info['package_id'])) {
+                $amount = intval($pkg['price']);
+                $package_id = $pkg['id'] ?? $pkg['package_id'];
+                break;
             }
         }
 
-        // Create payment intent
-        $stripe = new Rakubun_AI_Stripe();
-        $result = $stripe->create_payment_intent($amount, 'jpy', array(
-            'user_id' => $user_id,
-            'credit_type' => $credit_type,
-            'credits' => $credits
-        ));
+        // Fallback to local config if package not found in external API
+        if ($amount === null) {
+            if ($package_info['credit_type'] === 'article') {
+                $amount = intval(get_option('rakubun_ai_article_price', 750));
+                $package_id = 'article_starter';
+            } elseif ($package_info['credit_type'] === 'image') {
+                $amount = intval(get_option('rakubun_ai_image_price', 300));
+                $package_id = 'image_starter';
+            } elseif ($package_info['credit_type'] === 'rewrite') {
+                // Fallback rewrite prices
+                $rewrite_prices = array(
+                    'rewrite_basic' => 9800,
+                    'rewrite_premium' => 39800,
+                    'rewrite_enterprise' => 129800
+                );
+                $amount = $rewrite_prices[$credit_type] ?? 9800;
+                $package_id = $package_info['package_id'];
+            }
+        }
 
-        if (!$result['success']) {
-            wp_send_json_error(array('message' => $result['error']));
+        // Create payment intent via external dashboard API
+        $result = $external_api->create_payment_intent(
+            $user_id,
+            $package_info['credit_type'],
+            $package_id,
+            $amount
+        );
+
+        if (!$result) {
+            wp_send_json_error(array('message' => 'Failed to create payment intent. Please try again.'));
         }
 
         wp_send_json_success(array(
             'client_secret' => $result['client_secret'],
-            'payment_intent_id' => $result['payment_intent_id']
+            'payment_intent_id' => $result['payment_intent_id'],
+            'amount' => $result['amount'],
+            'currency' => $result['currency']
+        ));
+    }
+
+    /**
+     * AJAX: Create Stripe Checkout Session
+     * Creates a session for Stripe Checkout (professional hosted checkout)
+     */
+    public function ajax_create_checkout_session() {
+        check_ajax_referer('rakubun_ai_nonce', 'nonce');
+
+        $user_id = get_current_user_id();
+        
+        if (!$user_id) {
+            wp_send_json_error(array('message' => 'User not authenticated.'));
+        }
+
+        $package_id = isset($_POST['package_id']) ? sanitize_text_field($_POST['package_id']) : '';
+        $amount = isset($_POST['amount']) ? intval($_POST['amount']) : 0;
+
+        if (empty($package_id) || $amount <= 0) {
+            wp_send_json_error(array('message' => 'Invalid request parameters.'));
+        }
+
+        // Initialize external API
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        $external_api = new Rakubun_AI_External_API();
+
+        if (!$external_api->is_connected()) {
+            wp_send_json_error(array('message' => 'Plugin is not registered with dashboard.'));
+        }
+
+        // Get user info
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => 'User not found.'));
+        }
+
+        // Determine credit type from package_id
+        $credit_type = 'article'; // default
+        if (strpos($package_id, 'image') !== false) {
+            $credit_type = 'image';
+        } elseif (strpos($package_id, 'rewrite') !== false) {
+            $credit_type = 'rewrite';
+        }
+
+        // Get package details
+        $packages_response = $external_api->get_packages();
+        if (!$packages_response) {
+            wp_send_json_error(array('message' => 'Unable to fetch packages from dashboard.'));
+        }
+
+        // Find package in the grouped response
+        $package_data = null;
+        $credit_type_map = array(
+            'article' => 'articles',
+            'image' => 'images',
+            'rewrite' => 'rewrites'
+        );
+        
+        $category_key = $credit_type_map[$credit_type] ?? 'articles';
+        if (isset($packages_response[$category_key])) {
+            foreach ($packages_response[$category_key] as $pkg) {
+                if (($pkg['package_id'] ?? null) === $package_id) {
+                    $package_data = $pkg;
+                    break;
+                }
+            }
+        }
+
+        if (!$package_data) {
+            wp_send_json_error(array('message' => 'Package not found.'));
+        }
+
+        // Prepare success and cancel URLs
+        $success_url = add_query_arg(array(
+            'page' => 'rakubun-ai-purchase',
+            'session_id' => '{CHECKOUT_SESSION_ID}',
+            'status' => 'success'
+        ), admin_url('admin.php'));
+
+        $cancel_url = add_query_arg(array(
+            'page' => 'rakubun-ai-purchase',
+            'status' => 'cancel'
+        ), admin_url('admin.php'));
+
+        // Prepare checkout session data for dashboard API
+        $checkout_data = array(
+            'user_id' => $user_id,
+            'user_email' => $user->user_email,
+            'credit_type' => $credit_type,
+            'package_id' => $package_id,
+            'amount' => intval($amount),
+            'currency' => $package_data['currency'] ?? 'JPY',
+            'return_url' => $success_url,
+            'cancel_url' => $cancel_url
+        );
+
+        // Make request to external dashboard to create checkout session
+        $api_token = get_option('rakubun_ai_api_token');
+        $instance_id = get_option('rakubun_ai_instance_id');
+
+        if (empty($api_token) || empty($instance_id)) {
+            wp_send_json_error(array('message' => 'Plugin credentials not configured.'));
+        }
+
+        $response = wp_remote_post(
+            'https://app.rakubun.com/api/v1/checkout/sessions',
+            array(
+                'method' => 'POST',
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $api_token,
+                    'Content-Type' => 'application/json',
+                    'X-Instance-ID' => $instance_id
+                ),
+                'body' => wp_json_encode($checkout_data),
+                'timeout' => 15,
+                'sslverify' => true
+            )
+        );
+
+        if (is_wp_error($response)) {
+            error_log('Rakubun Checkout Error: ' . $response->get_error_message());
+            wp_send_json_error(array('message' => 'Failed to create checkout session: ' . $response->get_error_message()));
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        $status_code = wp_remote_retrieve_response_code($response);
+
+        error_log('Rakubun Checkout Response: ' . wp_json_encode($body));
+
+        if ($status_code !== 200 || empty($body['success'])) {
+            wp_send_json_error(array(
+                'message' => $body['message'] ?? 'Failed to create checkout session.'
+            ));
+        }
+
+        // Dashboard returns 'url' not 'checkout_url'
+        $checkout_url = $body['url'] ?? $body['checkout_url'] ?? null;
+        
+        if (empty($checkout_url)) {
+            wp_send_json_error(array('message' => 'No checkout URL provided by dashboard.'));
+        }
+
+        wp_send_json_success(array(
+            'checkout_url' => $checkout_url
         ));
     }
 
@@ -427,72 +698,36 @@ class Rakubun_AI_Admin {
             wp_send_json_error(array('message' => 'Invalid request.'));
         }
 
-        // Validate credit type
-        $valid_types = array('articles', 'images', 'rewrite_starter', 'rewrite_standard', 'rewrite_premium', 'rewrite_enterprise');
-        if (!in_array($credit_type, $valid_types, true)) {
-            wp_send_json_error(array('message' => 'Invalid credit type.'));
+        // Initialize external API
+        require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
+        $external_api = new Rakubun_AI_External_API();
+
+        if (!$external_api->is_connected()) {
+            wp_send_json_error(array('message' => 'Plugin is not registered with dashboard.'));
         }
 
-        // Validate payment intent ID format (Stripe format: pi_...)
-        if (!preg_match('/^pi_[a-zA-Z0-9_]+$/', $payment_intent_id)) {
-            wp_send_json_error(array('message' => 'Invalid payment intent ID format.'));
+        // Determine credit type for API call (rewrite_basic -> rewrite, etc.)
+        $api_credit_type = 'article';
+        if (strpos($credit_type, 'image') !== false) {
+            $api_credit_type = 'image';
+        } elseif (strpos($credit_type, 'rewrite') !== false) {
+            $api_credit_type = 'rewrite';
         }
 
-        // Verify payment with Stripe
-        $stripe = new Rakubun_AI_Stripe();
-        $verification = $stripe->verify_payment($payment_intent_id);
+        // Confirm payment with external dashboard API
+        $result = $external_api->confirm_payment($payment_intent_id, $user_id, $api_credit_type);
 
-        if (!$verification['success']) {
-            wp_send_json_error(array('message' => 'Payment verification failed.'));
+        if (!$result) {
+            wp_send_json_error(array('message' => 'Payment confirmation failed. Please try again.'));
         }
 
-        // Verify the payment amount and metadata match our expectations
-        $payment = $verification['payment'];
-        if (!isset($payment['metadata']['user_id']) || $payment['metadata']['user_id'] != $user_id) {
-            wp_send_json_error(array('message' => 'Payment metadata mismatch.'));
+        // Get updated credits from dashboard
+        $credits = $external_api->get_user_credits($user_id);
+        
+        if (!$credits) {
+            // Fallback to local credits if dashboard doesn't have them
+            $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
         }
-
-        // Add credits based on type
-        if ($credit_type === 'articles') {
-            $credits_to_add = intval(get_option('rakubun_ai_articles_per_purchase', 10));
-            $amount = intval(get_option('rakubun_ai_article_price', 750));
-            Rakubun_AI_Credits_Manager::add_credits($user_id, 'article', $credits_to_add);
-        } elseif ($credit_type === 'images') {
-            $credits_to_add = intval(get_option('rakubun_ai_images_per_purchase', 20));
-            $amount = intval(get_option('rakubun_ai_image_price', 300));
-            Rakubun_AI_Credits_Manager::add_credits($user_id, 'image', $credits_to_add);
-        } else {
-            // Handle rewrite packages
-            $rewrite_packages = array(
-                'rewrite_starter' => array('rewrites' => 50, 'price' => 3000),
-                'rewrite_standard' => array('rewrites' => 150, 'price' => 7500),
-                'rewrite_premium' => array('rewrites' => 300, 'price' => 12000),
-                'rewrite_enterprise' => array('rewrites' => 500, 'price' => 17500)
-            );
-            
-            if (isset($rewrite_packages[$credit_type])) {
-                $package = $rewrite_packages[$credit_type];
-                $credits_to_add = $package['rewrites'];
-                $amount = $package['price'];
-                Rakubun_AI_Credits_Manager::add_credits($user_id, 'rewrite', $credits_to_add);
-            } else {
-                wp_send_json_error(array('message' => 'Invalid rewrite package type.'));
-            }
-        }
-
-        // Log transaction
-        Rakubun_AI_Credits_Manager::log_transaction(
-            $user_id,
-            'purchase',
-            $amount,
-            $credits_to_add,
-            $credit_type,
-            $payment_intent_id,
-            'completed'
-        );
-
-        // Get updated credits
-        $credits = Rakubun_AI_Credits_Manager::get_user_credits($user_id);
 
         wp_send_json_success(array(
             'message' => 'Credits added successfully!',
@@ -624,5 +859,144 @@ class Rakubun_AI_Admin {
             'analytics' => $analytics,
             'recent_content' => $recent_content
         ));
+    }
+
+    /**
+     * Ensure database tables exist
+     */
+    private function ensure_database_tables() {
+        global $wpdb;
+        
+        $tables_to_check = array(
+            $wpdb->prefix . 'rakubun_user_credits',
+            $wpdb->prefix . 'rakubun_transactions',
+            $wpdb->prefix . 'rakubun_generated_content',
+            $wpdb->prefix . 'rakubun_rewrite_history'
+        );
+        
+        foreach ($tables_to_check as $table) {
+            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table'");
+            if (!$table_exists) {
+                // Trigger plugin activation to create missing tables
+                require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-activator.php';
+                Rakubun_AI_Activator::activate();
+                break;
+            }
+        }
+    }
+
+    /**
+     * Safely get user credits with fallback
+     */
+    private function get_credits_safely($user_id) {
+        try {
+            return Rakubun_AI_Credits_Manager::get_user_credits($user_id);
+        } catch (Exception $e) {
+            error_log('Rakubun AI Credits Error: ' . $e->getMessage());
+            // Re-throw the exception so dashboard can display error
+            throw $e;
+        }
+    }
+
+    /**
+     * Safely get analytics with fallback
+     */
+    private function get_analytics_safely($user_id) {
+        try {
+            return Rakubun_AI_Credits_Manager::get_user_analytics($user_id);
+        } catch (Exception $e) {
+            error_log('Rakubun AI Analytics Error: ' . $e->getMessage());
+            return array(
+                'total_articles' => 0,
+                'total_images' => 0,
+                'recent_articles' => 0,
+                'recent_images' => 0,
+                'total_spent' => 0,
+                'monthly_usage' => array()
+            );
+        }
+    }
+
+    /**
+     * Safely get recent content with fallback
+     */
+    private function get_recent_content_safely($user_id, $limit) {
+        try {
+            return Rakubun_AI_Credits_Manager::get_recent_content($user_id, $limit);
+        } catch (Exception $e) {
+            error_log('Rakubun AI Recent Content Error: ' . $e->getMessage());
+            return array();
+        }
+    }
+
+    /**
+     * Safely get user images with fallback
+     */
+    private function get_user_images_safely($user_id, $limit) {
+        try {
+            return Rakubun_AI_Credits_Manager::get_user_images($user_id, $limit);
+        } catch (Exception $e) {
+            error_log('Rakubun AI User Images Error: ' . $e->getMessage());
+            return array();
+        }
+    }
+
+    /**
+     * Safely get rewrite statistics with fallback
+     */
+    private function get_rewrite_statistics_safely($user_id) {
+        try {
+            return Rakubun_AI_Credits_Manager::get_rewrite_statistics($user_id);
+        } catch (Exception $e) {
+            error_log('Rakubun AI Rewrite Statistics Error: ' . $e->getMessage());
+            return array(
+                'total_rewrites' => 0,
+                'characters_added' => 0,
+                'seo_improvements' => 0,
+                'recent_rewrites' => array()
+            );
+        }
+    }
+
+    /**
+     * Display error page when dashboard fails
+     */
+    private function display_dashboard_error() {
+        ?>
+        <div class="wrap rakubun-ai-dashboard">
+            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            
+            <div class="notice notice-error">
+                <p><strong>Erreur:</strong> Il y a eu un problème lors du chargement du tableau de bord. Les tables de base de données peuvent être manquantes ou corrompues.</p>
+                <p>Veuillez essayer de désactiver et réactiver le plugin pour corriger ce problème.</p>
+            </div>
+            
+            <div class="rakubun-quick-actions">
+                <h2>Actions Rapides</h2>
+                <div class="action-buttons">
+                    <a href="<?php echo admin_url('admin.php?page=rakubun-ai-generate-article'); ?>" class="button button-primary button-large">
+                        📝 Générer un article
+                    </a>
+                    <a href="<?php echo admin_url('admin.php?page=rakubun-ai-generate-image'); ?>" class="button button-primary button-large">
+                        🎨 Générer une image
+                    </a>
+                    <a href="<?php echo admin_url('admin.php?page=rakubun-ai-settings'); ?>" class="button button-secondary button-large">
+                        ⚙️ Paramètres
+                    </a>
+                </div>
+            </div>
+            
+            <div class="rakubun-info-section">
+                <h2>Résolution des problèmes</h2>
+                <p>Si vous continuez à voir cette erreur, veuillez:</p>
+                <ol>
+                    <li>Désactiver le plugin depuis la page des plugins</li>
+                    <li>Réactiver le plugin pour créer les tables de base de données</li>
+                    <li>Vérifier que votre site WordPress a les permissions nécessaires pour créer des tables de base de données</li>
+                    <li>Contacter le support si le problème persiste</li>
+                </ol>
+            </div>
+        </div>
+        <?php
     }
 }

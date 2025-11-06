@@ -38,6 +38,20 @@ if (isset($_POST['force_sync']) && wp_verify_nonce($_POST['rakubun_ai_settings_n
         echo '<div class="notice notice-error"><p>データの同期に失敗しました。</p></div>';
     }
 }
+
+// Handle dev test requests
+$dev_test_results = array();
+if (wp_verify_nonce($_POST['rakubun_ai_settings_nonce'] ?? '', 'rakubun_ai_settings')) {
+    if (isset($_POST['test_article_config'])) {
+        $dev_test_results['article_config'] = $external_api->test_article_configuration();
+    } elseif (isset($_POST['test_image_config'])) {
+        $dev_test_results['image_config'] = $external_api->test_image_configuration();
+    } elseif (isset($_POST['test_rewrite_config'])) {
+        $dev_test_results['rewrite_config'] = $external_api->test_rewrite_configuration();
+    } elseif (isset($_POST['test_stripe_config'])) {
+        $dev_test_results['stripe_config'] = $external_api->test_stripe_configuration();
+    }
+}
 ?>
 
 <div class="wrap rakubun-ai-settings">
@@ -46,16 +60,17 @@ if (isset($_POST['force_sync']) && wp_verify_nonce($_POST['rakubun_ai_settings_n
     <form method="post" action="">
         <?php wp_nonce_field('rakubun_ai_settings', 'rakubun_ai_settings_nonce'); ?>
         
+        <!-- Connection Status Section -->
         <h2>接続ステータス</h2>
         <table class="form-table">
             <tr>
                 <th scope="row">Rakubun管理ダッシュボード</th>
                 <td>
                     <?php if ($is_connected): ?>
-                        <span style="color: green;">✓ 接続済み</span>
+                        <span style="color: green; font-weight: bold;">✓ 接続済み</span>
                         <p class="description">プラグインはRakubun管理ダッシュボードに正常に接続されています。</p>
                     <?php else: ?>
-                        <span style="color: red;">✗ 未接続</span>
+                        <span style="color: red; font-weight: bold;">✗ 未接続</span>
                         <p class="description">プラグインをRakubun管理ダッシュボードに接続する必要があります。</p>
                     <?php endif; ?>
                 </td>
@@ -64,9 +79,9 @@ if (isset($_POST['force_sync']) && wp_verify_nonce($_POST['rakubun_ai_settings_n
                 <th scope="row">API接続テスト</th>
                 <td>
                     <?php if ($connection_test): ?>
-                        <span style="color: green;">✓ 正常</span>
+                        <span style="color: green; font-weight: bold;">✓ 正常</span>
                     <?php else: ?>
-                        <span style="color: red;">✗ 失敗</span>
+                        <span style="color: red; font-weight: bold;">✗ 失敗</span>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -79,6 +94,7 @@ if (isset($_POST['force_sync']) && wp_verify_nonce($_POST['rakubun_ai_settings_n
             </tr>
         </table>
 
+        <!-- Registration Section (show only if not connected) -->
         <?php if (!$is_connected): ?>
         <h2>プラグイン登録</h2>
         <table class="form-table">
@@ -95,91 +111,105 @@ if (isset($_POST['force_sync']) && wp_verify_nonce($_POST['rakubun_ai_settings_n
         </table>
         <?php endif; ?>
 
-        <h2>外部管理設定</h2>
+        <!-- Data Sync Section -->
+        <h2>データ同期</h2>
         <table class="form-table">
             <tr>
-                <th scope="row">設定管理</th>
-                <td>
-                    <p class="description">
-                        すべての設定（OpenAI APIキー、パッケージ価格、Stripe設定など）は、
-                        <a href="https://app.rakubun.com" target="_blank">Rakubun管理ダッシュボード</a>で管理されます。
-                    </p>
-                </td>
-            </tr>
-            <tr>
-                <th scope="row">データ同期</th>
+                <th scope="row">アナリティクス同期</th>
                 <td>
                     <input type="submit" name="force_sync" class="button" value="今すぐ同期">
                     <p class="description">
                         使用統計とアナリティクスデータを外部ダッシュボードに送信します。<br>
-                        通常は自動的に1日1回同期されます。
+                        通常は自動的に1時間ごとに同期されます。
                     </p>
-                </td>
-            </tr>
-        </table>
-
-        <?php if ($is_connected): ?>
-        <h2>現在の設定状況</h2>
-        <table class="form-table">
-            <tr>
-                <th scope="row">設定管理</th>
-                <td>
-                    <a href="https://app.rakubun.com" target="_blank" class="button button-primary">
-                        Rakubun管理ダッシュボードを開く
-                    </a>
-                    <p class="description">
-                        外部ダッシュボードで以下の設定を管理できます：
-                    </p>
-                    <ul>
-                        <li>OpenAI APIキーの設定</li>
-                        <li>パッケージ価格の設定</li>
-                        <li>ユーザークレジットの管理</li>
-                        <li>使用統計の確認</li>
-                        <li>複数サイトの一元管理</li>
-                    </ul>
-                </td>
-            </tr>
-        </table>
-        <?php endif; ?>
-
-        <h2>プラグイン情報</h2>
-        <table class="form-table">
-            <tr>
-                <th scope="row">管理方法</th>
-                <td>
-                    <p>このプラグインは外部管理システムを使用しており、以下のような利点があります：</p>
-                    <ul>
-                        <li><strong>一元管理</strong>: 複数のWordPressサイトを一つのダッシュボードで管理</li>
-                        <li><strong>セキュリティ</strong>: APIキーは外部で安全に管理され、サイトには保存されません</li>
-                        <li><strong>リアルタイム</strong>: 設定変更は即座に反映されます</li>
-                        <li><strong>アナリティクス</strong>: 詳細な使用統計と分析データ</li>
-                        <li><strong>簡単設定</strong>: 複雑な設定は不要です</li>
-                    </ul>
                 </td>
             </tr>
         </table>
     </form>
 
-    <div class="rakubun-settings-info">
-        <h2>使用手順</h2>
-        <ol>
-            <li>上記の「Rakubun管理ダッシュボードに登録」ボタンをクリック</li>
-            <li><a href="https://app.rakubun.com" target="_blank">Rakubun管理ダッシュボード</a>にアクセス</li>
-            <li>OpenAI APIキーとその他の設定を構成</li>
-            <li>プラグインでAIコンテンツの生成を開始</li>
-        </ol>
+    <!-- Development Testing Section -->
+    <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+    <div style="background: #f5f5f5; border: 2px solid #0073aa; border-radius: 8px; padding: 20px; margin-top: 30px;">
+        <h2 style="color: #0073aa;">🔧 開発者用テストツール</h2>
+        <p style="color: #666; font-style: italic;">注: このセクションはWP_DEBUGが有効な場合にのみ表示されます。生成は行わず、外部APIからの設定とキーのみをチェックします。</p>
+        
+        <form method="post" action="">
+            <?php wp_nonce_field('rakubun_ai_settings', 'rakubun_ai_settings_nonce'); ?>
+            
+            <!-- Article Configuration Test -->
+            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin: 15px 0;">
+                <h3>📝 記事生成設定チェック</h3>
+                <p style="color: #666;">外部ダッシュボードから記事生成用のOpenAI設定を取得できるか確認します。<strong>実際には記事を生成しません。</strong></p>
+                <input type="submit" name="test_article_config" class="button button-secondary" value="チェック実行">
+                
+                <?php if (isset($dev_test_results['article_config'])): ?>
+                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['article_config']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['article_config']['success'] ? '#28a745' : '#dc3545'; ?>;">
+                    <strong><?php echo $dev_test_results['article_config']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
+                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 200px;"><?php echo esc_html(json_encode($dev_test_results['article_config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+                </div>
+                <?php endif; ?>
+            </div>
 
-        <h3>無料クレジット</h3>
-        <p>新規ユーザーには自動的に以下が付与されます：</p>
-        <ul>
-            <li>記事生成 3回分の無料クレジット</li>
-            <li>画像生成 5回分の無料クレジット</li>
-        </ul>
+            <!-- Image Configuration Test -->
+            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin: 15px 0;">
+                <h3>🖼️ 画像生成設定チェック</h3>
+                <p style="color: #666;">外部ダッシュボードから画像生成用のOpenAI設定を取得できるか確認します。<strong>実際には画像を生成しません。</strong></p>
+                <input type="submit" name="test_image_config" class="button button-secondary" value="チェック実行">
+                
+                <?php if (isset($dev_test_results['image_config'])): ?>
+                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['image_config']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['image_config']['success'] ? '#28a745' : '#dc3545'; ?>;">
+                    <strong><?php echo $dev_test_results['image_config']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
+                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 200px;"><?php echo esc_html(json_encode($dev_test_results['image_config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+                </div>
+                <?php endif; ?>
+            </div>
 
-        <h3>サポート</h3>
+            <!-- Rewrite Configuration Test -->
+            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin: 15px 0;">
+                <h3>🔄 リライト設定チェック</h3>
+                <p style="color: #666;">外部ダッシュボードからリライト用のOpenAI設定を取得できるか確認します。<strong>実際にはリライトを実行しません。</strong></p>
+                <input type="submit" name="test_rewrite_config" class="button button-secondary" value="チェック実行">
+                
+                <?php if (isset($dev_test_results['rewrite_config'])): ?>
+                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['rewrite_config']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['rewrite_config']['success'] ? '#28a745' : '#dc3545'; ?>;">
+                    <strong><?php echo $dev_test_results['rewrite_config']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
+                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 200px;"><?php echo esc_html(json_encode($dev_test_results['rewrite_config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Stripe Configuration Test -->
+            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin: 15px 0;">
+                <h3>💳 Stripe設定チェック</h3>
+                <p style="color: #666;">外部ダッシュボードからStripe公開キーが正しく取得できるか、および決済システムが正常に動作するか確認します。</p>
+                <input type="submit" name="test_stripe_config" class="button button-secondary" value="チェック実行">
+                
+                <?php if (isset($dev_test_results['stripe_config'])): ?>
+                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['stripe_config']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['stripe_config']['success'] ? '#28a745' : '#dc3545'; ?>;">
+                    <strong><?php echo $dev_test_results['stripe_config']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
+                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 200px;"><?php echo esc_html(json_encode($dev_test_results['stripe_config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+                </div>
+                <?php endif; ?>
+            </div>
+        </form>
+    </div>
+    <?php endif; ?>
+
+    <!-- Information Section -->
+    <div class="rakubun-settings-info" style="margin-top: 30px;">
+        <h2>ダッシュボード管理</h2>
         <p>
-            設定やご利用に関してご質問がある場合は、
-            <a href="https://app.rakubun.com/support" target="_blank">サポートページ</a>をご確認ください。
+            このプラグインは外部ダッシュボードで一元管理されています。<br>
+            <a href="https://app.rakubun.com" target="_blank" class="button button-primary">Rakubun管理ダッシュボードを開く</a>
         </p>
+        
+        <h3>管理項目</h3>
+        <ul>
+            <li><strong>OpenAI APIキー設定</strong> - 記事、画像、リライト用の設定を一元管理</li>
+            <li><strong>パッケージ価格設定</strong> - クレジットパッケージの価格と内容</li>
+            <li><strong>Stripe決済設定</strong> - 支払い方法と通貨設定</li>
+            <li><strong>ユーザークレジット管理</strong> - ユーザーのクレジット残高と付与</li>
+            <li><strong>使用統計・アナリティクス</strong> - 生成量、売上、ユーザー数など</li>
+        </ul>
     </div>
 </div>

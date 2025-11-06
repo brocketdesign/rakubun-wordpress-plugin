@@ -3,7 +3,7 @@
  * Plugin Name: Rakubun AI Content Generator
  * Plugin URI: https://github.com/brocketdesign/rakubun-wordpress-plugin
  * Description: Generate AI-powered articles and images using OpenAI GPT-4 and DALL-E. Includes Stripe payment integration for purchasing credits.
- * Version: 1.2.1
+ * Version: 2.1.0
  * Author: Brocket Design
  * Author URI: https://github.com/brocketdesign
  * License: GPL-2.0+
@@ -18,7 +18,7 @@ if (!defined('WPINC')) {
 }
 
 // Plugin version
-define('RAKUBUN_AI_VERSION', '1.2.1');
+define('RAKUBUN_AI_VERSION', '2.1.0');
 
 // Plugin directory path
 define('RAKUBUN_AI_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -58,6 +58,11 @@ add_action('rakubun_ai_sync_analytics', function() {
     $external_api = new Rakubun_AI_External_API();
     $external_api->send_analytics();
 });
+
+/**
+ * Load webhook handler for dashboard integration
+ */
+require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-webhook-handler.php';
 
 /**
  * The core plugin class
