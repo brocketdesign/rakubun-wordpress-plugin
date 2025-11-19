@@ -19,6 +19,23 @@ $registration_status = get_option('rakubun_ai_registration_status', 'not_registe
 $is_connected = $external_api->is_connected();
 $connection_test = $external_api->test_connection();
 
+// Get current provider setting
+$api_provider = get_option('rakubun_ai_api_provider', 'openai');
+
+// Handle API provider selection
+if (isset($_POST['update_provider']) && wp_verify_nonce($_POST['rakubun_ai_settings_nonce'], 'rakubun_ai_settings')) {
+    if (isset($_POST['api_provider'])) {
+        $selected_provider = sanitize_text_field($_POST['api_provider']);
+        if (in_array($selected_provider, array('openai', 'novita'))) {
+            update_option('rakubun_ai_api_provider', $selected_provider);
+            $api_provider = $selected_provider;
+            // Clear the config cache to force reload with new provider
+            delete_transient('rakubun_ai_api_config');
+            echo '<div class="notice notice-success"><p>APIプロバイダーが正常に更新されました。</p></div>';
+        }
+    }
+}
+
 // Handle registration request
 if (isset($_POST['register_plugin']) && wp_verify_nonce($_POST['rakubun_ai_settings_nonce'], 'rakubun_ai_settings')) {
     if ($external_api->register_plugin()) {
@@ -90,6 +107,39 @@ if (wp_verify_nonce($_POST['rakubun_ai_settings_nonce'] ?? '', 'rakubun_ai_setti
                 <td>
                     <code><?php echo esc_html(get_option('rakubun_ai_instance_id', '未生成')); ?></code>
                     <p class="description">このWordPressサイトの一意識別子です。</p>
+                </td>
+            </tr>
+        </table>
+
+        <!-- API Provider Selection Section -->
+        <h2>APIプロバイダー設定</h2>
+        <table class="form-table">
+            <tr>
+                <th scope="row">使用するAIプロバイダー</th>
+                <td>
+                    <fieldset>
+                        <legend class="screen-reader-text"><span>使用するAIプロバイダー</span></legend>
+                        <label>
+                            <input type="radio" name="api_provider" value="openai" <?php checked('openai', $api_provider); ?> />
+                            <strong>OpenAI</strong>
+                            <p style="margin-left: 25px; color: #666; font-size: 13px;">GPT-4やDALL-E-3などのOpenAIモデルを使用します。</p>
+                        </label>
+                        <br/>
+                        <label>
+                            <input type="radio" name="api_provider" value="novita" <?php checked('novita', $api_provider); ?> />
+                            <strong>Novita AI</strong>
+                            <p style="margin-left: 25px; color: #666; font-size: 13px;">DeepSeek、Llama、その他のNovita AIモデルを使用します。</p>
+                        </label>
+                        <p class="description" style="margin-top: 15px;">
+                            使用するAIプロバイダーを選択してください。プロバイダーの変更後、APIキーも対応するプロバイダーのものに更新してください。
+                        </p>
+                    </fieldset>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">適用</th>
+                <td>
+                    <input type="submit" name="update_provider" class="button button-primary" value="プロバイダーを更新">
                 </td>
             </tr>
         </table>

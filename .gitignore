@@ -40,3 +40,10 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Backup files
+*.bak
+*.old
+*.original
+*.backup    
+*.backup.*

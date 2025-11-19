@@ -1,18 +1,24 @@
 <?php
 /**
  * OpenAI API integration for article and image generation
+ * Supports both OpenAI and Novita AI providers
  */
 class Rakubun_AI_OpenAI {
 
     /**
-     * OpenAI configuration from external API
+     * API configuration from external API
      */
     private $config;
 
     /**
+     * API provider (openai or novita)
+     */
+    private $provider;
+
+    /**
      * API base URL
      */
-    private $api_base = 'https://api.openai.com/v1';
+    private $api_base;
 
     /**
      * External API instance
@@ -25,15 +31,31 @@ class Rakubun_AI_OpenAI {
     public function __construct() {
         require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-external-api.php';
         $this->external_api = new Rakubun_AI_External_API();
-        $this->config = $this->get_openai_config();
+        $this->config = $this->get_api_config();
+        $this->set_api_base();
     }
 
     /**
-     * Get OpenAI configuration from external API
+     * Set API base URL based on provider
      */
-    private function get_openai_config() {
+    private function set_api_base() {
+        switch ($this->provider) {
+            case 'novita':
+                $this->api_base = 'https://api.novita.ai/openai/v1';
+                break;
+            case 'openai':
+            default:
+                $this->api_base = 'https://api.openai.com/v1';
+                break;
+        }
+    }
+
+    /**
+     * Get API configuration from external API
+     */
+    private function get_api_config() {
         // Check cache first
-        $cache_key = 'rakubun_ai_openai_config';
+        $cache_key = 'rakubun_ai_api_config';
         $config = get_transient($cache_key);
         
         if ($config === false) {
@@ -49,6 +71,7 @@ class Rakubun_AI_OpenAI {
             if (!$config) {
                 $config = array(
                     'api_key' => get_option('rakubun_ai_openai_api_key', ''),
+                    'api_provider' => get_option('rakubun_ai_api_provider', 'openai'),
                     'model_article' => 'gpt-4',
                     'model_image' => 'dall-e-3',
                     'max_tokens' => 2000,
@@ -57,19 +80,22 @@ class Rakubun_AI_OpenAI {
             }
         }
         
+        // Set the provider
+        $this->provider = isset($config['api_provider']) ? $config['api_provider'] : 'openai';
+        
         return $config;
     }
 
     /**
-     * Generate article using GPT-4
+     * Generate article using GPT-4 or Novita model
      */
     public function generate_article($prompt, $max_tokens = null, $language = 'ja') {
-        $config = $this->get_openai_config();
+        $config = $this->get_api_config();
         
         if (empty($config['api_key'])) {
             return array(
                 'success' => false,
-                'error' => 'OpenAI API key is not configured in the Rakubun dashboard.'
+                'error' => 'API key is not configured in the Rakubun dashboard.'
             );
         }
 
@@ -163,15 +189,15 @@ class Rakubun_AI_OpenAI {
     }
 
     /**
-     * Generate image using DALL-E
+     * Generate image using DALL-E or Novita image model
      */
     public function generate_image($prompt, $size = '1024x1024') {
-        $config = $this->get_openai_config();
+        $config = $this->get_api_config();
         
         if (empty($config['api_key'])) {
             return array(
                 'success' => false,
-                'error' => 'OpenAI API key is not configured in the Rakubun dashboard.'
+                'error' => 'API key is not configured in the Rakubun dashboard.'
             );
         }
 
@@ -307,7 +333,8 @@ class Rakubun_AI_OpenAI {
      * Make API request
      */
     private function make_request($endpoint, $data) {
-        $config = $this->get_openai_config();
+        $config = $this->get_api_config();
+        $provider_name = $this->provider === 'novita' ? 'Novita' : 'OpenAI';
         
         $args = array(
             'headers' => array(
@@ -323,7 +350,7 @@ class Rakubun_AI_OpenAI {
         $response = wp_remote_post($endpoint, $args);
 
         if (is_wp_error($response)) {
-            error_log('OpenAI API Error: ' . $response->get_error_message());
+            error_log("{$provider_name} API Error: " . $response->get_error_message());
             return array(
                 'success' => false,
                 'error' => $response->get_error_message()
@@ -335,7 +362,7 @@ class Rakubun_AI_OpenAI {
 
         // Log the full response for debugging
         if ($status_code !== 200) {
-            error_log('OpenAI API Response: Status ' . $status_code . ', Body: ' . $body);
+            error_log("{$provider_name} API Response: Status " . $status_code . ', Body: ' . $body);
         }
 
         if ($status_code !== 200) {
@@ -407,15 +434,15 @@ class Rakubun_AI_OpenAI {
     }
 
     /**
-     * Generate tags for article using GPT
+     * Generate tags for article using GPT or Novita model
      */
     public function generate_tags($title, $content, $max_tags = 5, $language = 'ja') {
-        $config = $this->get_openai_config();
+        $config = $this->get_api_config();
         
         if (empty($config['api_key'])) {
             return array(
                 'success' => false,
-                'error' => 'OpenAI API key is not configured in the Rakubun dashboard.'
+                'error' => 'API key is not configured in the Rakubun dashboard.'
             );
         }
 
@@ -476,5 +503,26 @@ class Rakubun_AI_OpenAI {
             'success' => false,
             'error' => 'Failed to generate tags. Please try again.'
         );
+    }
+
+    /**
+     * Get the current API provider
+     */
+    public function get_provider() {
+        return $this->provider;
+    }
+
+    /**
+     * Get the current API base URL
+     */
+    public function get_api_base() {
+        return $this->api_base;
+    }
+
+    /**
+     * Get the current configuration
+     */
+    public function get_config() {
+        return $this->config;
     }
 }
