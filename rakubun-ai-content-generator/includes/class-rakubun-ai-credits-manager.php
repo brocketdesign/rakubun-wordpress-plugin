@@ -739,4 +739,39 @@ class Rakubun_AI_Credits_Manager {
         
         return $wpdb->get_results($query);
     }
+
+    /**
+     * Get rewrite history for display in admin
+     */
+    public static function get_rewrite_history($user_id, $limit = 20) {
+        global $wpdb;
+        
+        $rewrite_table = $wpdb->prefix . 'rakubun_rewrite_history';
+        $posts_table = $wpdb->posts;
+        
+        // Check if rewrite history table exists
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $rewrite_table));
+        if (!$table_exists) {
+            return array();
+        }
+        
+        $query = $wpdb->prepare("
+            SELECT 
+                r.id,
+                r.post_id,
+                r.character_change,
+                r.seo_improvements,
+                r.status,
+                r.rewrite_date,
+                p.post_title,
+                p.post_status
+            FROM {$rewrite_table} r
+            LEFT JOIN {$posts_table} p ON r.post_id = p.ID
+            WHERE r.user_id = %d
+            ORDER BY r.rewrite_date DESC
+            LIMIT %d
+        ", $user_id, $limit);
+        
+        return $wpdb->get_results($query);
+    }
 }

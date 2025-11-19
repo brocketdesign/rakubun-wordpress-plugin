@@ -112,43 +112,10 @@ if (isset($_POST['save_rewrite_schedule']) && check_admin_referer('rakubun_ai_sc
         </div>
     </div>
 
+
     <!-- SEO Benefits Explanation Section -->
     <div class="rakubun-seo-benefits-section">
-        <h2>🚀 AIリライトのSEO効果</h2>
-        
         <div class="seo-benefits-content">
-            <div class="benefits-grid">
-                <div class="benefit-item">
-                    <div class="benefit-icon">🎯</div>
-                    <h3>キーワード最適化</h3>
-                    <p>AIが最新のSEOトレンドに基づいて、自然な文脈でキーワードを追加・調整します。</p>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon">📝</div>
-                    <h3>コンテンツ品質向上</h3>
-                    <p>文章の構造を改善し、読みやすさとユーザーエクスペリエンスを向上させます。</p>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon">🔍</div>
-                    <h3>メタ情報最適化</h3>
-                    <p>タイトル、メタディスクリプション、見出しタグを検索エンジン向けに最適化します。</p>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon">📊</div>
-                    <h3>定期的なフレッシュ化</h3>
-                    <p>Googleが重視するコンテンツの新鮮さを保ち、検索順位の維持・向上を図ります。</p>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon">🏷️</div>
-                    <h3>スマートタグ生成</h3>
-                    <p>記事内容に基づいて関連性の高いタグを自動生成。SEO効果を高め、記事の分類・検索性を向上させます。</p>
-                </div>
-            </div>
-            
             <div class="cta-section">
                 <p><strong>100記事以上のサイト向け特別パッケージ</strong>をご用意しています！</p>
                 <a href="<?php echo admin_url('admin.php?page=rakubun-ai-purchase'); ?>" class="button button-primary button-large">
@@ -157,7 +124,7 @@ if (isset($_POST['save_rewrite_schedule']) && check_admin_referer('rakubun_ai_sc
             </div>
         </div>
     </div>
-
+    
     <!-- Auto Rewrite Schedule Section -->
     <div class="rakubun-schedule-section">
         <h2>⏰ 自動リライト設定</h2>
@@ -289,6 +256,30 @@ if (isset($_POST['save_rewrite_schedule']) && check_admin_referer('rakubun_ai_sc
                     1回あたり <strong><?php echo esc_html($next_batch_count); ?></strong>記事 / 
                     最小経過期間 <strong><?php echo esc_html(intval($rewrite_schedule['target_post_age'] ?? 6)); ?></strong>ヶ月
                 </p>
+                
+                <?php 
+                $next_cron = wp_next_scheduled('rakubun_ai_auto_rewrite');
+                if ($next_cron): 
+                ?>
+                <p>
+                    <strong>次回自動実行予定:</strong> <?php echo esc_html(date('Y年m月d日 H:i', $next_cron)); ?>
+                    (残り <?php echo esc_html(human_time_diff($next_cron)); ?>)
+                </p>
+                <?php else: ?>
+                <p class="cron-warning">
+                    ⚠️ <strong>cron が設定されていません。</strong> 設定を保存し直してください。
+                </p>
+                <?php endif; ?>
+                
+                <div class="debug-actions">
+                    <button type="button" id="test-cron-btn" class="button button-secondary">
+                        🔧 自動リライトを今すぐテスト実行
+                    </button>
+                    <button type="button" id="debug-system-btn" class="button button-secondary" style="margin-left: 10px;">
+                        🔍 システム診断
+                    </button>
+                    <p class="debug-note">テスト実行はクレジットを消費します。システム診断では設定や接続状況を確認できます。</p>
+                </div>
             </div>
 
             <?php if (!empty($next_scheduled_posts)): ?>
@@ -347,6 +338,11 @@ if (isset($_POST['save_rewrite_schedule']) && check_admin_referer('rakubun_ai_sc
                                     <a href="<?php echo get_edit_post_link($post->ID); ?>" class="button button-small" target="_blank">
                                         編集
                                     </a>
+                                    <button class="button button-primary button-small rewrite-now-btn" 
+                                            data-post-id="<?php echo esc_attr($post->ID); ?>"
+                                            <?php if (!$has_sufficient_credits): ?>disabled title="クレジットが不足しています"<?php endif; ?>>
+                                        🔄 今すぐリライト
+                                    </button>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -378,6 +374,103 @@ if (isset($_POST['save_rewrite_schedule']) && check_admin_referer('rakubun_ai_sc
             <div class="disabled-message">
                 <p>自動リライト機能が無効に設定されています。</p>
                 <p>上記の「基本設定」セクションで機能を有効にしてください。</p>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Rewrite History Section -->
+    <div class="rakubun-rewrite-history">
+        <h2>📋 リライト履歴</h2>
+        
+        <?php if (!empty($rewrite_history)): ?>
+            <div class="history-table-container">
+                <table class="widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>記事タイトル</th>
+                            <th>リライト日時</th>
+                            <th>文字数変化</th>
+                            <th>SEO改善項目</th>
+                            <th>ステータス</th>
+                            <th>アクション</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($rewrite_history as $history): ?>
+                        <tr>
+                            <td>
+                                <?php if ($history->post_title): ?>
+                                    <a href="<?php echo get_edit_post_link($history->post_id); ?>" target="_blank">
+                                        <?php echo esc_html(substr($history->post_title, 0, 60)); ?>
+                                        <?php if (strlen($history->post_title) > 60): ?>...<?php endif; ?>
+                                    </a>
+                                <?php else: ?>
+                                    <span class="deleted-post">記事が削除されました (ID: <?php echo esc_html($history->post_id); ?>)</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo esc_html(date('Y/m/d H:i', strtotime($history->rewrite_date))); ?></td>
+                            <td>
+                                <span class="character-change <?php echo $history->character_change > 0 ? 'positive' : ($history->character_change < 0 ? 'negative' : 'neutral'); ?>">
+                                    <?php 
+                                    if ($history->character_change > 0) {
+                                        echo '+' . number_format($history->character_change);
+                                    } elseif ($history->character_change < 0) {
+                                        echo number_format($history->character_change);
+                                    } else {
+                                        echo '0';
+                                    }
+                                    ?> 文字
+                                </span>
+                            </td>
+                            <td>
+                                <span class="seo-improvements">
+                                    <?php echo esc_html($history->seo_improvements); ?> 項目
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge status-<?php echo esc_attr($history->status); ?>">
+                                    <?php 
+                                    switch($history->status) {
+                                        case 'completed':
+                                            echo '完了';
+                                            break;
+                                        case 'processing':
+                                            echo '処理中';
+                                            break;
+                                        case 'failed':
+                                            echo '失敗';
+                                            break;
+                                        default:
+                                            echo '不明';
+                                    }
+                                    ?>
+                                </span>
+                            </td>
+                            <td>
+                                <?php if ($history->post_title): ?>
+                                    <a href="<?php echo get_edit_post_link($history->post_id); ?>" class="button button-small" target="_blank">
+                                        編集
+                                    </a>
+                                    <a href="<?php echo get_permalink($history->post_id); ?>" class="button button-small" target="_blank">
+                                        表示
+                                    </a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="history-summary">
+                <p>
+                    直近の<strong><?php echo count($rewrite_history); ?></strong>件のリライト履歴を表示しています。
+                </p>
+            </div>
+        <?php else: ?>
+            <div class="no-history-message">
+                <p>📝 まだリライト履歴がありません。</p>
+                <p>自動リライト機能を有効にするか、上記のスケジュール設定で記事のリライトを開始してください。</p>
             </div>
         <?php endif; ?>
     </div>
@@ -772,10 +865,34 @@ if (isset($_POST['save_rewrite_schedule']) && check_admin_referer('rakubun_ai_sc
 }
 
 .rakubun-ai-auto-rewrite .queue-info p {
-    margin: 0;
+    margin: 10px 0;
     font-size: 14px;
     color: #333;
     line-height: 1.6;
+}
+
+.rakubun-ai-auto-rewrite .cron-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 10px;
+    color: #856404;
+    margin: 10px 0;
+}
+
+.rakubun-ai-auto-rewrite .debug-actions {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.rakubun-ai-auto-rewrite .debug-note {
+    margin: 5px 0 0 0;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
 }
 
 .rakubun-ai-auto-rewrite .queue-table-container {
@@ -930,6 +1047,146 @@ if (isset($_POST['save_rewrite_schedule']) && check_admin_referer('rakubun_ai_sc
     background: #fff3cd;
     color: #856404;
 }
+
+.rakubun-ai-auto-rewrite .status-failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Manual Rewrite Button Styling */
+.rakubun-ai-auto-rewrite .rewrite-now-btn {
+    margin-left: 5px;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.rakubun-ai-auto-rewrite .rewrite-now-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
+}
+
+.rakubun-ai-auto-rewrite .rewrite-now-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.rakubun-ai-auto-rewrite .rewrite-now-btn.processing {
+    background: #ff9800 !important;
+    color: white;
+}
+
+.rakubun-ai-auto-rewrite .rewrite-now-btn.processing:disabled {
+    opacity: 1;
+}
+
+.rakubun-ai-auto-rewrite .rewrite-now-btn.completed {
+    background: #4caf50 !important;
+    color: white;
+}
+
+/* Rewrite History Styling */
+.rakubun-ai-auto-rewrite .rakubun-rewrite-history {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 30px;
+    margin: 30px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.rakubun-ai-auto-rewrite .rakubun-rewrite-history h2 {
+    margin-top: 0;
+    color: #333;
+    font-size: 20px;
+    margin-bottom: 20px;
+}
+
+.rakubun-ai-auto-rewrite .history-table-container {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.rakubun-ai-auto-rewrite .deleted-post {
+    color: #999;
+    font-style: italic;
+}
+
+.rakubun-ai-auto-rewrite .character-change {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.rakubun-ai-auto-rewrite .character-change.positive {
+    background: #d4f6d4;
+    color: #2e7d32;
+}
+
+.rakubun-ai-auto-rewrite .character-change.negative {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.rakubun-ai-auto-rewrite .character-change.neutral {
+    background: #f5f5f5;
+    color: #666;
+}
+
+.rakubun-ai-auto-rewrite .history-summary {
+    background: #fafafa;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.rakubun-ai-auto-rewrite .history-summary p {
+    margin: 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.rakubun-ai-auto-rewrite .no-history-message {
+    background: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    color: #2e7d32;
+}
+
+.rakubun-ai-auto-rewrite .no-history-message p {
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+/* Loading and feedback states */
+.rakubun-ai-auto-rewrite .rewrite-feedback {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 8px;
+    z-index: 10000;
+    text-align: center;
+    min-width: 300px;
+}
+
+.rakubun-ai-auto-rewrite .rewrite-feedback.success {
+    background: rgba(46, 125, 50, 0.9);
+}
+
+.rakubun-ai-auto-rewrite .rewrite-feedback.error {
+    background: rgba(198, 40, 40, 0.9);
+}
 </style>
 
 <script>
@@ -945,6 +1202,184 @@ document.addEventListener('DOMContentLoaded', function() {
                 tagOptions.style.display = 'none';
             }
         });
+    }
+
+    // Test cron functionality
+    const testCronBtn = document.getElementById('test-cron-btn');
+    if (testCronBtn) {
+        testCronBtn.addEventListener('click', function() {
+            if (!confirm('自動リライト処理をテスト実行しますか？\n\n注意: この操作は実際のクレジットを消費します。')) {
+                return;
+            }
+            
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = '🔄 実行中...';
+            
+            showRewriteFeedback('自動リライト処理を実行しています...', 'info');
+            
+            jQuery.post(ajaxurl, {
+                action: 'rakubun_test_auto_rewrite',
+                nonce: '<?php echo wp_create_nonce("rakubun_ai_nonce"); ?>'
+            })
+            .done(function(response) {
+                if (response.success) {
+                    showRewriteFeedback('✅ ' + response.data.message + '\n処理した記事数: ' + response.data.processed_count, 'success');
+                    
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    showRewriteFeedback('❌ ' + (response.data.message || 'テスト実行に失敗しました'), 'error');
+                }
+                
+                testCronBtn.disabled = false;
+                testCronBtn.textContent = originalText;
+            })
+            .fail(function() {
+                showRewriteFeedback('❌ ネットワークエラーが発生しました', 'error');
+                testCronBtn.disabled = false;
+                testCronBtn.textContent = originalText;
+            });
+        });
+    }
+
+    // Debug system functionality
+    const debugSystemBtn = document.getElementById('debug-system-btn');
+    if (debugSystemBtn) {
+        debugSystemBtn.addEventListener('click', function() {
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = '🔄 診断中...';
+            
+            showRewriteFeedback('システム診断を実行しています...', 'info');
+            
+            jQuery.post(ajaxurl, {
+                action: 'rakubun_debug_rewrite',
+                nonce: '<?php echo wp_create_nonce("rakubun_ai_nonce"); ?>'
+            })
+            .done(function(response) {
+                if (response.success) {
+                    const debug = response.data;
+                    let message = '🔍 システム診断結果:\n\n';
+                    message += `OpenAI クラス: ${debug.openai_class_exists ? '✅ OK' : '❌ 見つかりません'}\n`;
+                    message += `API キー: ${debug.api_key_configured ? '✅ 設定済み' : '❌ 未設定'}\n`;
+                    message += `リライトクレジット: ${debug.user_credits.rewrite_credits || 0}個\n`;
+                    message += `リライト対象記事: ${debug.posts_available}件\n`;
+                    message += `次回cron実行: ${debug.next_cron}\n`;
+                    message += `OpenAI接続テスト: ${debug.openai_test.success ? '✅ 成功' : '❌ 失敗 - ' + (debug.openai_test.error || '不明なエラー')}`;
+                    
+                    console.log('Debug info:', debug);
+                    alert(message);
+                } else {
+                    showRewriteFeedback('❌ 診断に失敗しました: ' + (response.data.message || '不明なエラー'), 'error');
+                }
+                
+                debugSystemBtn.disabled = false;
+                debugSystemBtn.textContent = originalText;
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Debug AJAX error:', {xhr: xhr, status: status, error: error});
+                showRewriteFeedback('❌ 診断でネットワークエラーが発生しました', 'error');
+                debugSystemBtn.disabled = false;
+                debugSystemBtn.textContent = originalText;
+            });
+        });
+    }
+
+    // Manual rewrite functionality
+    const rewriteButtons = document.querySelectorAll('.rewrite-now-btn');
+    
+    rewriteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const postId = this.dataset.postId;
+            const originalText = this.textContent;
+            
+            if (!postId || this.disabled) {
+                return;
+            }
+            
+            // Show confirmation
+            if (!confirm('この記事を今すぐリライトしますか？\n\n注意: この操作はクレジットを消費し、取り消すことができません。')) {
+                return;
+            }
+            
+            // Disable button and show loading state
+            this.disabled = true;
+            this.classList.add('processing');
+            this.textContent = '🔄 処理中...';
+            
+            // Show feedback
+            showRewriteFeedback('リライトを開始しています...', 'info');
+            
+            // Make AJAX request
+            jQuery.post(ajaxurl, {
+                action: 'rakubun_start_manual_rewrite',
+                post_id: postId,
+                nonce: '<?php echo wp_create_nonce("rakubun_ai_nonce"); ?>'
+            })
+            .done(function(response) {
+                console.log('Rewrite response:', response);
+                
+                if (response.success) {
+                    showRewriteFeedback('✅ リライトが完了しました！', 'success');
+                    
+                    // Update button state
+                    button.textContent = '✅ 完了';
+                    button.classList.remove('processing');
+                    button.classList.add('completed');
+                    
+                    // Refresh page after delay to show updated history
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    const errorMsg = response.data ? response.data.message : 'リライトに失敗しました';
+                    console.error('Rewrite error:', errorMsg);
+                    showRewriteFeedback('❌ エラー: ' + errorMsg, 'error');
+                    
+                    // Reset button state
+                    button.disabled = false;
+                    button.classList.remove('processing');
+                    button.textContent = originalText;
+                }
+            })
+            .fail(function(xhr, status, error) {
+                console.error('AJAX error:', {xhr: xhr, status: status, error: error});
+                const errorDetails = xhr.responseText ? ' (' + xhr.status + ': ' + xhr.responseText + ')' : '';
+                showRewriteFeedback('❌ ネットワークエラーが発生しました' + errorDetails, 'error');
+                
+                // Reset button state
+                button.disabled = false;
+                button.classList.remove('processing');
+                button.textContent = originalText;
+            });
+        });
+    });
+    
+    function showRewriteFeedback(message, type) {
+        // Remove existing feedback
+        const existingFeedback = document.querySelector('.rewrite-feedback');
+        if (existingFeedback) {
+            existingFeedback.remove();
+        }
+        
+        // Create new feedback element
+        const feedback = document.createElement('div');
+        feedback.className = 'rewrite-feedback ' + type;
+        feedback.textContent = message;
+        
+        // Add to page
+        document.body.appendChild(feedback);
+        
+        // Auto-remove after delay (except for processing messages)
+        if (type !== 'info') {
+            setTimeout(function() {
+                if (feedback.parentNode) {
+                    feedback.remove();
+                }
+            }, 4000);
+        }
     }
 });
 </script>

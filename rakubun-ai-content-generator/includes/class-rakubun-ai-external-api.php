@@ -143,16 +143,11 @@ class Rakubun_AI_External_API {
             return null;
         }
 
-        $cache_key = 'rakubun_ai_packages_cache';
-        $cached = get_transient($cache_key);
-        if ($cached !== false) {
-            return $cached;
-        }
-
+        // Always fetch fresh packages - never use cache
+        // Packages contain sensitive pricing info that must always be current
         $response = $this->make_request('GET', '/packages');
 
         if (!empty($response['success']) && !empty($response['packages'])) {
-            set_transient($cache_key, $response['packages'], HOUR_IN_SECONDS);
             return $response['packages'];
         }
 
@@ -593,5 +588,26 @@ class Rakubun_AI_External_API {
             'is_valid_format' => $is_valid_format,
             'status' => $is_valid_format ? 'ready' : 'invalid_format'
         );
+    }
+
+    /**
+     * Clear all Rakubun plugin caches
+     * Useful when dashboard configurations or packages have been updated
+     */
+    public static function clear_all_caches() {
+        $cache_keys = array(
+            'rakubun_ai_packages_cache',
+            'rakubun_ai_openai_config_cache',
+            'rakubun_ai_image_config_cache',
+            'rakubun_ai_rewrite_config_cache',
+            'rakubun_ai_stripe_config_cache'
+        );
+
+        foreach ($cache_keys as $key) {
+            delete_transient($key);
+        }
+
+        error_log('Rakubun: All caches cleared');
+        return true;
     }
 }

@@ -167,22 +167,17 @@ if ($checkout_status === 'success' && !empty($session_id)) {
 if (!$external_api->is_connected()) {
     $packages_error = 'ダッシュボードに接続されていません。プラグインをダッシュボードに接続してください。';
 } else {
-    // Get packages from external API
-    $cache_key = 'rakubun_ai_packages_cache';
-    $cached_packages = get_transient($cache_key);
+    // Always fetch fresh packages from external API
+    // Packages contain sensitive pricing info that must always be current
+    $external_packages = $external_api->get_packages();
+    error_log('Rakubun Purchase - API Response: ' . wp_json_encode($external_packages));
     
-    if ($cached_packages === false) {
-        $external_packages = $external_api->get_packages();
-        error_log('Rakubun Purchase - API Response: ' . wp_json_encode($external_packages));
-        if ($external_packages && is_array($external_packages)) {
-            $cached_packages = $external_packages;
-            // Cache for 1 hour
-            set_transient($cache_key, $cached_packages, HOUR_IN_SECONDS);
-            error_log('Rakubun Purchase - Cached Packages: ' . wp_json_encode($cached_packages));
-        } else {
-            $packages_error = 'ダッシュボードからパッケージを取得できませんでした。しばらく待ってから再度お試しください。';
-            error_log('Rakubun Purchase - Empty API Response');
-        }
+    if ($external_packages && is_array($external_packages)) {
+        $cached_packages = $external_packages;
+        error_log('Rakubun Purchase - Fresh Packages: ' . wp_json_encode($cached_packages));
+    } else {
+        $packages_error = 'ダッシュボードからパッケージを取得できませんでした。しばらく待ってから再度お試しください。';
+        error_log('Rakubun Purchase - Empty API Response');
     }
     
     // Map packages from grouped structure (articles, images, rewrites)
@@ -240,64 +235,100 @@ $is_connected = $external_api->is_connected();
     <div class="notice notice-error is-dismissible">
         <p><strong>パッケージ読み込みエラー:</strong> <?php echo esc_html($packages_error); ?></p>
     </div>
-    <?php else: ?>
+    <?php endif; ?>
 
-    <!-- Navigation and Explanation Section -->
-    <div class="rakubun-pricing-navigation">
-        <div class="pricing-explanation">
-            <h2>📦 ご利用いただけるクレジットパッケージ</h2>
-            <p>目的に応じて3つの異なるクレジットパッケージからお選びいただけます。各セクションでお得なパッケージプランをご用意しています。</p>
-        </div>
-        
-        <div class="pricing-nav-tabs">
-            <button class="nav-tab active" onclick="scrollToSection('basic-credits')" data-target="basic-credits">
-                ✍️ 記事・画像生成
-                <span class="nav-description">新しいコンテンツ作成</span>
-            </button>
-            <button class="nav-tab" onclick="scrollToSection('rewrite-packages')" data-target="rewrite-packages">
-                🔄 リライトパッケージ
-                <span class="nav-description">既存記事の改善・最適化</span>
-            </button>
-        </div>
+    <!-- Main Heading Section -->
+    <?php if (!$packages_error): ?>
+    <div class="rakubun-pricing-header">
+        <h2>📦 ご利用いただけるクレジットパッケージ</h2>
+        <p>目的に応じて3つの異なるクレジットパッケージからお選びいただけます。各セクションでお得なパッケージプランをご用意しています。</p>
     </div>
 
-    <div id="basic-credits" class="rakubun-pricing">
-        <h2>追加クレジットを購入</h2>
+    <!-- SECTION 1: Article Packages -->
+    <div id="article-packages" class="rakubun-package-section">
+        <div class="section-header">
+            <h2>✍️ 記事生成パッケージ</h2>
+            <p>新しいコンテンツを素早く生成。AI搭載で高品質な記事を自動作成</p>
+        </div>
         
         <div class="pricing-cards">
-            <!-- Articles Packages -->
             <?php if (!empty($packages['articles'])): ?>
                 <?php foreach ($packages['articles'] as $package): ?>
-                    <div class="pricing-card">
+                    <div class="pricing-card <?php echo (!empty($package['is_popular']) || !empty($package['popular'])) ? 'popular' : ''; ?>">
+                        <?php if (!empty($package['is_popular']) || !empty($package['popular'])): ?>
+                        <div class="popular-badge">最人気</div>
+                        <?php endif; ?>
+                        
                         <h3><?php echo esc_html($package['name'] ?? '記事生成クレジット'); ?></h3>
-                        <div class="price">¥<?php echo number_format($package['price'], 0); ?></div>
+                        
+                        <div class="package-price">
+                            <span class="main-price">¥<?php echo number_format($package['price'], 0); ?></span>
+                        </div>
+                        
+                        <?php if (!empty($package['discount'])): ?>
+                        <div class="discount-badge"><?php echo esc_html($package['discount']); ?></div>
+                        <?php endif; ?>
+                        
                         <div class="credits-amount"><?php echo esc_html($package['credits']); ?>記事分のクレジット</div>
-                        <ul class="features">
+                        
+                        <?php if (!empty($package['description'])): ?>
+                        <div class="package-description"><?php echo esc_html($package['description']); ?></div>
+                        <?php endif; ?>
+                        
+                        <ul class="package-features">
                             <li><?php echo esc_html($package['credits']); ?>記事をAI生成</li>
                             <li>GPT-4搭載</li>
                             <li>高品質なコンテンツ</li>
                             <li>下書き投稿を自動作成</li>
                         </ul>
+                        
                         <button class="button button-primary button-large" onclick="rakubunInitiatePayment('<?php echo esc_attr($package['package_id'] ?? 'articles'); ?>', <?php echo esc_attr($package['price']); ?>)">
                             今すぐ購入
                         </button>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
+        </div>
+    </div>
 
-            <!-- Images Packages -->
+    <!-- SECTION 2: Image Packages -->
+    <div id="image-packages" class="rakubun-package-section">
+        <div class="section-header">
+            <h2>🖼️ 画像生成パッケージ</h2>
+            <p>高品質な画像を素早く生成。複数のスタイルに対応した画像作成</p>
+        </div>
+        
+        <div class="pricing-cards">
             <?php if (!empty($packages['images'])): ?>
                 <?php foreach ($packages['images'] as $package): ?>
-                    <div class="pricing-card">
+                    <div class="pricing-card <?php echo (!empty($package['is_popular']) || !empty($package['popular'])) ? 'popular' : ''; ?>">
+                        <?php if (!empty($package['is_popular']) || !empty($package['popular'])): ?>
+                        <div class="popular-badge">最人気</div>
+                        <?php endif; ?>
+                        
                         <h3><?php echo esc_html($package['name'] ?? '画像生成クレジット'); ?></h3>
-                        <div class="price">¥<?php echo number_format($package['price'], 0); ?></div>
+                        
+                        <div class="package-price">
+                            <span class="main-price">¥<?php echo number_format($package['price'], 0); ?></span>
+                        </div>
+                        
+                        <?php if (!empty($package['discount'])): ?>
+                        <div class="discount-badge"><?php echo esc_html($package['discount']); ?></div>
+                        <?php endif; ?>
+                        
                         <div class="credits-amount"><?php echo esc_html($package['credits']); ?>画像分のクレジット</div>
-                        <ul class="features">
+                        
+                        <?php if (!empty($package['description'])): ?>
+                        <div class="package-description"><?php echo esc_html($package['description']); ?></div>
+                        <?php endif; ?>
+                        
+                        <ul class="package-features">
                             <li><?php echo esc_html($package['credits']); ?>画像をAI生成</li>
                             <li>DALL-E 3搭載</li>
                             <li>高品質な画像</li>
                             <li>複数サイズに対応</li>
                         </ul>
+                        
                         <button class="button button-primary button-large" onclick="rakubunInitiatePayment('<?php echo esc_attr($package['package_id'] ?? 'images'); ?>', <?php echo esc_attr($package['price']); ?>)">
                             今すぐ購入
                         </button>
@@ -307,20 +338,23 @@ $is_connected = $external_api->is_connected();
         </div>
     </div>
 
-    <!-- Auto Rewrite Packages Section -->
-    <div id="rewrite-packages" class="rakubun-rewrite-packages">
-        <h2>🔄 記事リライトパッケージ</h2>
-        <p class="package-description">既存の記事をAIが自動的にリライトし、SEO効果を向上させます。大規模サイト向けの特別価格をご用意！</p>
+    <!-- SECTION 3: Rewrite Packages -->
+    <div id="rewrite-packages" class="rakubun-package-section">
+        <div class="section-header">
+            <h2>🔄 記事リライトパッケージ</h2>
+            <p>既存の記事をAIが自動的にリライトし、SEO効果を向上させます。大規模サイト向けの特別価格をご用意</p>
+        </div>
         
-        <div class="rewrite-pricing-cards">
+        <div class="pricing-cards">
             <?php if (!empty($packages['rewrites'])): ?>
             <?php foreach ($packages['rewrites'] as $package_key => $package): ?>
-            <div class="rewrite-pricing-card <?php echo (!empty($package['is_popular']) || !empty($package['popular'])) ? 'popular' : ''; ?>">
+            <div class="pricing-card <?php echo (!empty($package['is_popular']) || !empty($package['popular'])) ? 'popular' : ''; ?>">
                 <?php if (!empty($package['is_popular']) || !empty($package['popular'])): ?>
                 <div class="popular-badge">最人気</div>
                 <?php endif; ?>
                 
                 <h3><?php echo esc_html($package['name']); ?></h3>
+                
                 <div class="package-price">
                     <span class="main-price">¥<?php echo number_format($package['price']); ?></span>
                     <?php if (!empty($package['credits'])): ?>
@@ -332,8 +366,11 @@ $is_connected = $external_api->is_connected();
                 <div class="discount-badge"><?php echo esc_html($package['discount']); ?></div>
                 <?php endif; ?>
                 
-                <div class="package-credits"><?php echo $package['credits'] ?? 'N/A'; ?>リライト分のクレジット</div>
-                <div class="suitable-for"><?php echo esc_html($package['description'] ?? ''); ?></div>
+                <div class="credits-amount"><?php echo $package['credits'] ?? 'N/A'; ?>リライト分のクレジット</div>
+                
+                <?php if (!empty($package['description'])): ?>
+                <div class="package-description"><?php echo esc_html($package['description']); ?></div>
+                <?php endif; ?>
                 
                 <ul class="package-features">
                     <li>✅ 既存記事のAIリライト</li>
@@ -352,32 +389,6 @@ $is_connected = $external_api->is_connected();
             </div>
             <?php endforeach; ?>
             <?php endif; ?>
-        </div>
-        
-        <div class="rewrite-benefits">
-            <h3>🚀 AIリライトのメリット</h3>
-            <div class="benefits-grid">
-                <div class="benefit">
-                    <div class="benefit-icon">📈</div>
-                    <h4>SEO効果向上</h4>
-                    <p>検索エンジンに最適化された構造とキーワード配置で検索順位アップ</p>
-                </div>
-                <div class="benefit">
-                    <div class="benefit-icon">⏰</div>
-                    <h4>時間効率化</h4>
-                    <p>手動での記事更新作業を自動化し、コンテンツ管理の時間を大幅短縮</p>
-                </div>
-                <div class="benefit">
-                    <div class="benefit-icon">🎯</div>
-                    <h4>品質向上</h4>
-                    <p>AIが最新のライティング技術で文章の読みやすさと価値を向上</p>
-                </div>
-                <div class="benefit">
-                    <div class="benefit-icon">🔄</div>
-                    <h4>継続的更新</h4>
-                    <p>定期的なリライトで常に新鮮なコンテンツを保ち、検索エンジンに評価される</p>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -410,18 +421,55 @@ $is_connected = $external_api->is_connected();
 </div>
 
 <style>
-/* ===== Pricing Cards Styling (Articles/Images) ===== */
-.rakubun-pricing {
-    margin: 40px 0;
-}
-
-.rakubun-pricing h2 {
+/* ===== Main Header ===== */
+.rakubun-pricing-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 50px 40px;
+    margin: 20px 0 50px 0;
+    border-radius: 12px;
     text-align: center;
-    margin-bottom: 30px;
-    color: #333;
-    font-size: 28px;
 }
 
+.rakubun-pricing-header h2 {
+    margin: 0 0 15px 0;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.rakubun-pricing-header p {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.95;
+    line-height: 1.6;
+}
+
+/* ===== Package Section (Articles, Images, Rewrites) ===== */
+.rakubun-package-section {
+    margin: 50px 0;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.section-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 28px;
+    font-weight: 600;
+    color: #333;
+}
+
+.section-header p {
+    margin: 0;
+    font-size: 16px;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* ===== Unified Pricing Cards ===== */
 .pricing-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -438,6 +486,8 @@ $is_connected = $external_api->is_connected();
     position: relative;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
 }
 
 .pricing-card:hover {
@@ -446,103 +496,16 @@ $is_connected = $external_api->is_connected();
     border-color: #667eea;
 }
 
-.pricing-card h3 {
-    margin: 0 0 15px 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: #333;
-}
-
-.pricing-card .price {
-    font-size: 32px;
-    font-weight: bold;
-    color: #667eea;
-    margin-bottom: 10px;
-}
-
-.pricing-card .credits-amount {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 20px;
-    font-weight: 500;
-}
-
-.pricing-card .features {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 25px 0;
-    text-align: left;
-}
-
-.pricing-card .features li {
-    padding: 8px 0;
-    font-size: 14px;
-    color: #555;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.pricing-card .features li:last-child {
-    border-bottom: none;
-}
-
-.pricing-card .button {
-    width: 100%;
-    margin-top: 15px;
-}
-
-/* ===== Rewrite Packages Section ===== */
-.rakubun-rewrite-packages {
-    margin: 60px 0 40px 0;
-}
-
-.rakubun-rewrite-packages h2 {
-    text-align: center;
-    margin-bottom: 15px;
-    color: #333;
-    font-size: 28px;
-}
-
-.package-description {
-    text-align: center;
-    font-size: 16px;
-    color: #666;
-    margin-bottom: 40px;
-    line-height: 1.6;
-}
-
-.rewrite-pricing-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 25px;
-    margin-bottom: 50px;
-}
-
-.rewrite-pricing-card {
-    background: #fff;
-    border: 2px solid #e5e5e5;
-    border-radius: 12px;
-    padding: 30px 25px;
-    text-align: center;
-    position: relative;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.rewrite-pricing-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-    border-color: #667eea;
-}
-
-.rewrite-pricing-card.popular {
+.pricing-card.popular {
     border-color: #667eea;
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.02) 0%, rgba(118, 75, 162, 0.02) 100%);
 }
 
-.rewrite-pricing-card.popular:hover {
+.pricing-card.popular:hover {
     box-shadow: 0 12px 28px rgba(102, 126, 234, 0.2);
 }
 
+/* Popular Badge */
 .popular-badge {
     position: absolute;
     top: -12px;
@@ -555,17 +518,20 @@ $is_connected = $external_api->is_connected();
     font-size: 12px;
     font-weight: 600;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    white-space: nowrap;
 }
 
-.rewrite-pricing-card h3 {
-    margin: 0 0 15px 0;
+/* Card Title */
+.pricing-card h3 {
+    margin: 15px 0;
     font-size: 20px;
     font-weight: 600;
     color: #333;
 }
 
+/* Price Section */
 .package-price {
-    margin-bottom: 15px;
+    margin: 15px 0;
 }
 
 .main-price {
@@ -583,6 +549,7 @@ $is_connected = $external_api->is_connected();
     font-weight: normal;
 }
 
+/* Discount Badge */
 .discount-badge {
     background: linear-gradient(135deg, #ff4757 0%, #ff6348 100%);
     color: white;
@@ -591,27 +558,32 @@ $is_connected = $external_api->is_connected();
     font-size: 12px;
     font-weight: 600;
     display: inline-block;
-    margin: 10px 0 15px 0;
+    margin: 10px 0;
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.2);
 }
 
-.package-credits {
-    font-size: 16px;
-    font-weight: 600;
+/* Credits Amount */
+.credits-amount {
+    font-size: 14px;
     color: #667eea;
-    margin-bottom: 8px;
+    margin: 10px 0;
+    font-weight: 600;
 }
 
-.suitable-for {
+/* Package Description */
+.package-description {
     font-size: 13px;
     color: #666;
-    margin-bottom: 20px;
+    margin: 12px 0 20px 0;
     line-height: 1.5;
+    flex-grow: 1;
 }
 
+/* Package Features List */
 .package-features {
     list-style: none;
     padding: 0;
-    margin: 0 0 25px 0;
+    margin: 20px 0;
     text-align: left;
 }
 
@@ -620,192 +592,79 @@ $is_connected = $external_api->is_connected();
     font-size: 14px;
     color: #555;
     border-bottom: 1px solid #f0f0f0;
+    line-height: 1.4;
 }
 
 .package-features li:last-child {
     border-bottom: none;
 }
 
-.rewrite-pricing-card .button {
+/* Button */
+.pricing-card .button {
     width: 100%;
-    margin-top: 15px;
+    margin-top: auto;
+    padding: 12px 20px !important;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     border: none !important;
     color: white !important;
-    padding: 12px 20px !important;
     border-radius: 6px !important;
     font-weight: 600 !important;
-    font-size: 16px !important;
+    font-size: 15px !important;
     cursor: pointer !important;
     transition: all 0.3s ease !important;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2) !important;
 }
 
-.rewrite-pricing-card .button:hover {
+.pricing-card .button:hover:not(:disabled) {
     transform: translateY(-2px) !important;
     box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3) !important;
 }
 
-/* ===== Benefits Section ===== */
-.rewrite-benefits {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 50px 40px;
-    border-radius: 12px;
-    margin-top: 40px;
-}
-
-.rewrite-benefits h3 {
-    text-align: center;
-    margin: 0 0 40px 0;
-    color: white;
-    font-size: 24px;
-}
-
-.benefits-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 30px;
-}
-
-.benefit {
-    text-align: center;
-    color: white;
-    padding: 20px;
-}
-
-.benefit-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-    line-height: 1;
-    display: block;
-}
-
-.benefit h4 {
-    margin: 0 0 12px 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.benefit p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.6;
-    opacity: 0.9;
-}
-
-/* ===== Navigation Styling ===== */
-.rakubun-pricing-navigation {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 40px 30px;
-    margin: 20px 0 40px 0;
-    border-radius: 12px;
-    text-align: center;
-}
-
-.pricing-explanation h2 {
-    margin: 0 0 15px 0;
-    color: white;
-    font-size: 24px;
-}
-
-.pricing-explanation p {
-    margin: 0 0 30px 0;
-    font-size: 16px;
-    opacity: 0.95;
-    line-height: 1.6;
-}
-
-.pricing-nav-tabs {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.nav-tab {
-    background: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 15px 25px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 600;
-    font-size: 14px;
-    text-align: left;
-    min-width: 200px;
-    backdrop-filter: blur(10px);
-}
-
-.nav-tab:hover,
-.nav-tab.active {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.6);
-    transform: translateY(-2px);
-}
-
-.nav-description {
-    display: block;
-    font-size: 12px;
-    font-weight: normal;
-    opacity: 0.8;
-    margin-top: 5px;
-}
-
-#basic-credits {
-    scroll-margin-top: 100px;
-}
-
-#rewrite-packages {
-    scroll-margin-top: 100px;
+.pricing-card .button:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
 }
 
 /* ===== Responsiveness ===== */
 @media (max-width: 768px) {
-    .rakubun-pricing-navigation {
-        padding: 30px 20px;
+    .rakubun-pricing-header {
+        padding: 40px 25px;
+        margin: 20px 0 40px 0;
     }
 
-    .pricing-nav-tabs {
-        flex-direction: column;
-        gap: 12px;
+    .rakubun-pricing-header h2 {
+        font-size: 24px;
     }
 
-    .nav-tab {
-        min-width: unset;
-        width: 100%;
+    .rakubun-pricing-header p {
+        font-size: 14px;
     }
 
-    .pricing-cards,
-    .rewrite-pricing-cards {
+    .section-header h2 {
+        font-size: 22px;
+    }
+
+    .section-header p {
+        font-size: 14px;
+    }
+
+    .pricing-cards {
         grid-template-columns: 1fr;
         gap: 20px;
     }
 
-    .benefits-grid {
-        grid-template-columns: 1fr;
-        gap: 25px;
-    }
-
-    .pricing-card,
-    .rewrite-pricing-card {
+    .pricing-card {
         padding: 25px 20px;
     }
 
-    .rewrite-benefits {
-        padding: 40px 25px;
-    }
-
-    .pricing-card .price,
     .main-price {
         font-size: 28px;
     }
 
-    .pricing-explanation h2,
-    .rakubun-rewrite-packages h2,
-    .rakubun-pricing h2 {
-        font-size: 22px;
+
+    .package-features li {
+        font-size: 13px;
+        padding: 6px 0;
     }
 }
 
@@ -960,7 +819,6 @@ $is_connected = $external_api->is_connected();
     margin: 0;
 }
 </style>
-</style>
 
 <script>
 // If we just completed a payment, clean URL once (don't reload infinitely)
@@ -987,46 +845,5 @@ function handlePaymentSuccess() {
 // Call on page load
 document.addEventListener('DOMContentLoaded', function() {
     handlePaymentSuccess();
-});
-
-function scrollToSection(sectionId) {
-    // Update active tab
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelector(`[data-target="${sectionId}"]`).classList.add('active');
-    
-    // Smooth scroll to section
-    const section = document.getElementById(sectionId);
-    if (section) {
-        section.scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'start'
-        });
-    }
-}
-
-// Add scroll spy functionality to highlight active section
-window.addEventListener('scroll', function() {
-    const sections = ['basic-credits', 'rewrite-packages'];
-    const scrollPosition = window.scrollY + 150; // Offset for header
-    
-    sections.forEach(sectionId => {
-        const section = document.getElementById(sectionId);
-        if (section) {
-            const sectionTop = section.offsetTop;
-            const sectionBottom = sectionTop + section.offsetHeight;
-            
-            if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
-                document.querySelectorAll('.nav-tab').forEach(tab => {
-                    tab.classList.remove('active');
-                });
-                const activeTab = document.querySelector(`[data-target="${sectionId}"]`);
-                if (activeTab) {
-                    activeTab.classList.add('active');
-                }
-            }
-        }
-    });
 });
 </script>

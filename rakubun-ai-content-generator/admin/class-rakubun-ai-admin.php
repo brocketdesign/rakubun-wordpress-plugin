@@ -216,6 +216,7 @@ class Rakubun_AI_Admin {
             $rewrite_stats = $this->get_rewrite_statistics_safely($user_id);
             $total_posts = wp_count_posts('post')->publish;
             $rewrite_schedule = get_option('rakubun_ai_rewrite_schedule', array());
+            $rewrite_history = Rakubun_AI_Credits_Manager::get_rewrite_history($user_id, 15);
             
             include RAKUBUN_AI_PLUGIN_DIR . 'admin/partials/auto-rewrite.php';
         } catch (Exception $e) {
