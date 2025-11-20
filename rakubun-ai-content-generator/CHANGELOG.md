@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Novita AI Integration
 - New Novita AI provider support
 - Access to DeepSeek R1 and Llama models for article generation
-- DALL-E-3 support for image generation
+- Qwen support for image generation
 - Alternative to OpenAI with competitive pricing
 
 ### Changed
