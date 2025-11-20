@@ -315,13 +315,22 @@ router.post('/users/deduct-credits', authenticatePlugin, async (req, res) => {
 });
 
 /**
- * Get Current Provider Configuration
- * GET /api/v1/config/provider
- * Returns configuration for the currently active provider
+ * Get Provider Configuration
+ * GET /api/v1/config/provider?provider=openai
+ * Returns configuration for specified provider, or currently active if not specified
  */
 router.get('/config/provider', authenticatePlugin, async (req, res) => {
   try {
-    const config = await ProviderConfig.getConfigForSite(req.site._id);
+    const requestedProvider = req.query.provider;
+    let config;
+
+    if (requestedProvider) {
+      // Get configuration for specific provider
+      config = await ProviderConfig.getConfigForSite(req.site._id, requestedProvider);
+    } else {
+      // Get currently active provider configuration
+      config = await ProviderConfig.getConfigForSite(req.site._id);
+    }
     
     if (!config) {
       return res.status(404).json({
@@ -330,16 +339,18 @@ router.get('/config/provider', authenticatePlugin, async (req, res) => {
       });
     }
 
+    const providerInfo = ProviderConfig.getProviderInfo(config.provider);
+    
     res.json({
       success: true,
       provider: config.provider,
-      provider_name: ProviderConfig.getProviderInfo(config.provider)?.name || 'Unknown',
+      provider_name: providerInfo?.name || 'Unknown',
       api_key: config.api_key,
       model_article: config.model_article,
       model_image: config.model_image,
       max_tokens: config.max_tokens,
       temperature: config.temperature,
-      base_url: ProviderConfig.getProviderInfo(config.provider)?.base_url
+      base_url: providerInfo?.base_url
     });
 
   } catch (error) {
@@ -1323,38 +1334,42 @@ router.post('/payments/confirm', authenticatePlugin, async (req, res) => {
 
 /**
  * Article Configuration
- * GET /api/v1/config/article
+ * GET /api/v1/config/article?provider=openai
+ * Returns article models and config for specified provider, or currently active if not specified
  */
 router.get('/config/article', authenticatePlugin, async (req, res) => {
   try {
-    // Get configuration for the external site
-    const config = await ProviderConfig.getConfigForSite(req.site._id);
+    const requestedProvider = req.query.provider;
+    let config;
+    let provider;
 
-    if (!config || !config.api_key) {
-      return res.status(404).json({
-        success: false,
-        error: 'no_provider_key',
-        message: 'Provider API key not configured for this instance'
-      });
+    if (requestedProvider) {
+      // Get configuration for specific provider
+      config = await ProviderConfig.getConfigForSite(req.site._id, requestedProvider);
+      provider = requestedProvider;
+    } else {
+      // Get currently active provider configuration
+      config = await ProviderConfig.getConfigForSite(req.site._id);
+      provider = config?.provider || 'openai'; // Default to openai if no config
     }
 
-    // Get available models for this provider
-    const providerInfo = ProviderConfig.getProviderInfo(config.provider);
+    // Get available models for this provider (even if no API key configured yet)
+    const providerInfo = ProviderConfig.getProviderInfo(provider);
     const availableModels = providerInfo?.models?.article || [];
 
     // Get system prompt or use default
-    const systemPrompt = config.system_prompt || 
+    const systemPrompt = config?.system_prompt || 
       'You are a professional content writer specialized in SEO-optimized articles. Create engaging, well-structured content that ranks well in search engines.';
 
     res.json({
       success: true,
-      provider: config.provider,
+      provider: provider,
       provider_name: providerInfo?.name,
       config: {
-        api_key: config.api_key,
-        model: config.model_article || providerInfo?.default_models?.article,
-        temperature: config.temperature || 0.7,
-        max_tokens: config.max_tokens || 2000,
+        api_key: config?.api_key || '',
+        model: config?.model_article || providerInfo?.default_models?.article,
+        temperature: config?.temperature || 0.7,
+        max_tokens: config?.max_tokens || 2000,
         system_prompt: systemPrompt,
         base_url: providerInfo?.base_url
       },
@@ -1373,23 +1388,27 @@ router.get('/config/article', authenticatePlugin, async (req, res) => {
 
 /**
  * Image Configuration
- * GET /api/v1/config/image
+ * GET /api/v1/config/image?provider=openai
+ * Returns image models and config for specified provider, or currently active if not specified
  */
 router.get('/config/image', authenticatePlugin, async (req, res) => {
   try {
-    // Get configuration for the external site
-    const config = await ProviderConfig.getConfigForSite(req.site._id);
+    const requestedProvider = req.query.provider;
+    let config;
+    let provider;
 
-    if (!config || !config.api_key) {
-      return res.status(404).json({
-        success: false,
-        error: 'no_provider_key',
-        message: 'Provider API key not configured for image generation'
-      });
+    if (requestedProvider) {
+      // Get configuration for specific provider
+      config = await ProviderConfig.getConfigForSite(req.site._id, requestedProvider);
+      provider = requestedProvider;
+    } else {
+      // Get currently active provider configuration
+      config = await ProviderConfig.getConfigForSite(req.site._id);
+      provider = config?.provider || 'openai'; // Default to openai if no config
     }
 
-    // Get available models for this provider
-    const providerInfo = ProviderConfig.getProviderInfo(config.provider);
+    // Get available models for this provider (even if no API key configured yet)
+    const providerInfo = ProviderConfig.getProviderInfo(provider);
     const availableModels = providerInfo?.models?.image || [];
 
     // Available image sizes (provider-dependent, shown as reference)
@@ -1401,12 +1420,12 @@ router.get('/config/image', authenticatePlugin, async (req, res) => {
 
     res.json({
       success: true,
-      provider: config.provider,
+      provider: provider,
       provider_name: providerInfo?.name,
       config: {
-        api_key: config.api_key,
-        model: config.model_image || providerInfo?.default_models?.image,
-        quality: config.image_quality || 'hd',
+        api_key: config?.api_key || '',
+        model: config?.model_image || providerInfo?.default_models?.image,
+        quality: config?.image_quality || 'hd',
         base_url: providerInfo?.base_url
       },
       models: availableModels,
@@ -1507,6 +1526,146 @@ router.get('/config/stripe', authenticatePlugin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'server_error',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Test Article Generation
+ * POST /api/v1/config/test/article
+ */
+router.post('/config/test/article', authenticatePlugin, async (req, res) => {
+  try {
+    const { provider } = req.query;
+    
+    if (!provider) {
+      return res.status(400).json({
+        success: false,
+        error: 'missing_provider',
+        message: 'Provider parameter is required'
+      });
+    }
+
+    const ProviderConfig = require('./ProviderConfig');
+    const providerInfo = ProviderConfig.getProviderInfo(provider);
+
+    if (!providerInfo) {
+      return res.status(400).json({
+        success: false,
+        error: 'invalid_provider',
+        message: `Provider '${provider}' not found`
+      });
+    }
+
+    const config = site.providers[provider];
+    if (!config || !config.api_key) {
+      return res.status(400).json({
+        success: false,
+        error: 'missing_config',
+        message: `${providerInfo.name} is not configured`
+      });
+    }
+
+    // Create AI instance for the provider
+    let aiInstance;
+    if (provider === 'openai') {
+      const OpenAI = require('./class-rakubun-ai-openai');
+      aiInstance = new OpenAI(config.api_key, config.model_article, config.temperature, config.base_url);
+    } else if (provider === 'novita') {
+      const Novita = require('./class-rakubun-ai-novita');
+      aiInstance = new Novita(config.api_key, config.model_article, config.temperature, config.base_url);
+    }
+
+    // Test article generation
+    const testPrompt = 'Write a brief test article about AI in 2-3 sentences.';
+    const result = await aiInstance.generateArticle(testPrompt);
+
+    res.json({
+      success: true,
+      provider: provider,
+      provider_name: providerInfo.name,
+      model: config.model_article,
+      test_prompt: testPrompt,
+      result: result,
+      message: `Article generation test successful for ${providerInfo.name}`
+    });
+
+  } catch (error) {
+    console.error('Test article generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'generation_failed',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Test Image Generation
+ * POST /api/v1/config/test/image
+ */
+router.post('/config/test/image', authenticatePlugin, async (req, res) => {
+  try {
+    const { provider } = req.query;
+    
+    if (!provider) {
+      return res.status(400).json({
+        success: false,
+        error: 'missing_provider',
+        message: 'Provider parameter is required'
+      });
+    }
+
+    const ProviderConfig = require('./ProviderConfig');
+    const providerInfo = ProviderConfig.getProviderInfo(provider);
+
+    if (!providerInfo) {
+      return res.status(400).json({
+        success: false,
+        error: 'invalid_provider',
+        message: `Provider '${provider}' not found`
+      });
+    }
+
+    const config = site.providers[provider];
+    if (!config || !config.api_key) {
+      return res.status(400).json({
+        success: false,
+        error: 'missing_config',
+        message: `${providerInfo.name} is not configured`
+      });
+    }
+
+    // Create AI instance for the provider
+    let aiInstance;
+    if (provider === 'openai') {
+      const OpenAI = require('./class-rakubun-ai-openai');
+      aiInstance = new OpenAI(config.api_key, config.model_image, config.temperature, config.base_url);
+    } else if (provider === 'novita') {
+      const Novita = require('./class-rakubun-ai-novita');
+      aiInstance = new Novita(config.api_key, config.model_image, config.temperature, config.base_url);
+    }
+
+    // Test image generation
+    const testPrompt = 'A professional AI technology background image';
+    const result = await aiInstance.generateImage(testPrompt);
+
+    res.json({
+      success: true,
+      provider: provider,
+      provider_name: providerInfo.name,
+      model: config.model_image,
+      test_prompt: testPrompt,
+      result: result,
+      message: `Image generation test successful for ${providerInfo.name}`
+    });
+
+  } catch (error) {
+    console.error('Test image generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'generation_failed',
       message: error.message
     });
   }

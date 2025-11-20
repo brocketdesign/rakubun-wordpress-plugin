@@ -52,36 +52,60 @@ class Rakubun_AI_OpenAI {
 
     /**
      * Get API configuration from external API
+     * Fetches provider-specific configuration including API key and models
      */
     private function get_api_config() {
-        // Check cache first
-        $cache_key = 'rakubun_ai_api_config';
+        // Get provider from local settings
+        $local_provider = get_option('rakubun_ai_api_provider', 'openai');
+        $this->provider = $local_provider;
+        
+        // Check cache first (5 minutes - shorter duration to get fresh API keys)
+        $cache_key = 'rakubun_ai_api_config_' . $local_provider;
         $config = get_transient($cache_key);
         
         if ($config === false) {
             if ($this->external_api->is_connected()) {
-                $config = $this->external_api->get_openai_config();
+                // Use the new /config/provider endpoint which returns both API key and models
+                $config = $this->external_api->get_provider_config($local_provider);
                 if ($config) {
-                    // Cache for 1 hour
-                    set_transient($cache_key, $config, HOUR_IN_SECONDS);
+                    // Cache for 5 minutes (shorter to get fresh keys if updated on dashboard)
+                    set_transient($cache_key, $config, 5 * MINUTE_IN_SECONDS);
                 }
             }
             
             // Fallback to local settings if external API fails
             if (!$config) {
+                error_log('Rakubun AI: Using fallback local configuration for provider: ' . $local_provider);
                 $config = array(
                     'api_key' => get_option('rakubun_ai_openai_api_key', ''),
-                    'api_provider' => get_option('rakubun_ai_api_provider', 'openai'),
-                    'model_article' => 'gpt-4',
-                    'model_image' => 'dall-e-3',
+                    'api_provider' => $local_provider,
+                    'model_article' => get_option('rakubun_ai_model_article', 'gpt-4'),
+                    'model_image' => get_option('rakubun_ai_model_image', 'dall-e-3'),
                     'max_tokens' => 2000,
                     'temperature' => 0.7
                 );
             }
         }
         
-        // Set the provider
-        $this->provider = isset($config['api_provider']) ? $config['api_provider'] : 'openai';
+        // Validate that we have the required fields
+        if (is_array($config)) {
+            // Ensure provider is set correctly
+            $config['api_provider'] = $local_provider;
+            
+            // Apply defaults for missing fields
+            if (empty($config['model_article'])) {
+                $config['model_article'] = 'gpt-4';
+            }
+            if (empty($config['model_image'])) {
+                $config['model_image'] = 'dall-e-3';
+            }
+            if (empty($config['max_tokens'])) {
+                $config['max_tokens'] = 2000;
+            }
+            if (empty($config['temperature'])) {
+                $config['temperature'] = 0.7;
+            }
+        }
         
         return $config;
     }
@@ -145,6 +169,9 @@ class Rakubun_AI_OpenAI {
             'max_tokens' => $max_tokens ?? $config['max_tokens'] ?? 2000,
             'temperature' => $config['temperature'] ?? 0.7
         );
+
+        // Log the provider and model being used
+        error_log('Rakubun AI - Article Generation: Provider=' . $this->provider . ', Model=' . $data['model']);
 
         $response = $this->make_request($endpoint, $data);
 
@@ -216,6 +243,22 @@ class Rakubun_AI_OpenAI {
             $size = '1024x1024'; // Default fallback
         }
 
+        // If provider is Novita, use Novita-specific async flow
+        if ($this->provider === 'novita') {
+            require_once RAKUBUN_AI_PLUGIN_DIR . 'includes/class-rakubun-ai-novita-image.php';
+            $novita = new Rakubun_AI_Novita_Image($config['api_key']);
+            $result = $novita->generate_image($prompt, $size, 15, 180);
+            // Keep return structure consistent
+            if ($result['success']) {
+                return array(
+                    'success' => true,
+                    'url' => $result['url'],
+                    'revised_prompt' => isset($result['revised_prompt']) ? $result['revised_prompt'] : $prompt
+                );
+            }
+            return $result;
+        }
+
         $endpoint = $this->api_base . '/images/generations';
         
         $data = array(
@@ -226,6 +269,9 @@ class Rakubun_AI_OpenAI {
             'quality' => 'standard',
             'response_format' => 'url'
         );
+
+        // Log the provider and model being used
+        error_log('Rakubun AI - Image Generation: Provider=' . $this->provider . ', Model=' . $data['model']);
 
         $response = $this->make_request($endpoint, $data);
 

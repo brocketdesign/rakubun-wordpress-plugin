@@ -29,8 +29,9 @@ if (isset($_POST['update_provider']) && wp_verify_nonce($_POST['rakubun_ai_setti
         if (in_array($selected_provider, array('openai', 'novita'))) {
             update_option('rakubun_ai_api_provider', $selected_provider);
             $api_provider = $selected_provider;
-            // Clear the config cache to force reload with new provider
+            // Clear all config caches to force reload with new provider
             delete_transient('rakubun_ai_api_config');
+            delete_transient('rakubun_ai_openai_config_cache');
             echo '<div class="notice notice-success"><p>APIプロバイダーが正常に更新されました。</p></div>';
         }
     }
@@ -59,12 +60,8 @@ if (isset($_POST['force_sync']) && wp_verify_nonce($_POST['rakubun_ai_settings_n
 // Handle dev test requests
 $dev_test_results = array();
 if (wp_verify_nonce($_POST['rakubun_ai_settings_nonce'] ?? '', 'rakubun_ai_settings')) {
-    if (isset($_POST['test_article_config'])) {
-        $dev_test_results['article_config'] = $external_api->test_article_configuration();
-    } elseif (isset($_POST['test_image_config'])) {
-        $dev_test_results['image_config'] = $external_api->test_image_configuration();
-    } elseif (isset($_POST['test_rewrite_config'])) {
-        $dev_test_results['rewrite_config'] = $external_api->test_rewrite_configuration();
+    if (isset($_POST['test_current_model'])) {
+        $dev_test_results['current_model'] = $external_api->test_current_model_configuration();
     } elseif (isset($_POST['test_stripe_config'])) {
         $dev_test_results['stripe_config'] = $external_api->test_stripe_configuration();
     }
@@ -181,49 +178,21 @@ if (wp_verify_nonce($_POST['rakubun_ai_settings_nonce'] ?? '', 'rakubun_ai_setti
     <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
     <div style="background: #f5f5f5; border: 2px solid #0073aa; border-radius: 8px; padding: 20px; margin-top: 30px;">
         <h2 style="color: #0073aa;">🔧 開発者用テストツール</h2>
-        <p style="color: #666; font-style: italic;">注: このセクションはWP_DEBUGが有効な場合にのみ表示されます。生成は行わず、外部APIからの設定とキーのみをチェックします。</p>
+        <p style="color: #666; font-style: italic;">注: このセクションはWP_DEBUGが有効な場合にのみ表示されます。実際の生成は行わず、外部APIからの設定とキーのみをチェックします。</p>
         
         <form method="post" action="">
             <?php wp_nonce_field('rakubun_ai_settings', 'rakubun_ai_settings_nonce'); ?>
             
-            <!-- Article Configuration Test -->
+            <!-- Current Model Configuration Test -->
             <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin: 15px 0;">
-                <h3>📝 記事生成設定チェック</h3>
-                <p style="color: #666;">外部ダッシュボードから記事生成用のOpenAI設定を取得できるか確認します。<strong>実際には記事を生成しません。</strong></p>
-                <input type="submit" name="test_article_config" class="button button-secondary" value="チェック実行">
+                <h3>🤖 現在のモデル設定チェック</h3>
+                <p style="color: #666;">現在選択されているプロバイダー（<?php echo esc_html($api_provider); ?>）の設定を外部ダッシュボードから取得して確認します。</p>
+                <input type="submit" name="test_current_model" class="button button-secondary" value="チェック実行">
                 
-                <?php if (isset($dev_test_results['article_config'])): ?>
-                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['article_config']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['article_config']['success'] ? '#28a745' : '#dc3545'; ?>;">
-                    <strong><?php echo $dev_test_results['article_config']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
-                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 200px;"><?php echo esc_html(json_encode($dev_test_results['article_config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- Image Configuration Test -->
-            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin: 15px 0;">
-                <h3>🖼️ 画像生成設定チェック</h3>
-                <p style="color: #666;">外部ダッシュボードから画像生成用のOpenAI設定を取得できるか確認します。<strong>実際には画像を生成しません。</strong></p>
-                <input type="submit" name="test_image_config" class="button button-secondary" value="チェック実行">
-                
-                <?php if (isset($dev_test_results['image_config'])): ?>
-                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['image_config']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['image_config']['success'] ? '#28a745' : '#dc3545'; ?>;">
-                    <strong><?php echo $dev_test_results['image_config']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
-                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 200px;"><?php echo esc_html(json_encode($dev_test_results['image_config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- Rewrite Configuration Test -->
-            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin: 15px 0;">
-                <h3>🔄 リライト設定チェック</h3>
-                <p style="color: #666;">外部ダッシュボードからリライト用のOpenAI設定を取得できるか確認します。<strong>実際にはリライトを実行しません。</strong></p>
-                <input type="submit" name="test_rewrite_config" class="button button-secondary" value="チェック実行">
-                
-                <?php if (isset($dev_test_results['rewrite_config'])): ?>
-                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['rewrite_config']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['rewrite_config']['success'] ? '#28a745' : '#dc3545'; ?>;">
-                    <strong><?php echo $dev_test_results['rewrite_config']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
-                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 200px;"><?php echo esc_html(json_encode($dev_test_results['rewrite_config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+                <?php if (isset($dev_test_results['current_model'])): ?>
+                <div style="margin-top: 15px; padding: 15px; background: <?php echo $dev_test_results['current_model']['success'] ? '#d4edda' : '#f8d7da'; ?>; border-left: 4px solid <?php echo $dev_test_results['current_model']['success'] ? '#28a745' : '#dc3545'; ?>;">
+                    <strong><?php echo $dev_test_results['current_model']['success'] ? '✓ 成功' : '✗ 失敗'; ?></strong>
+                    <pre style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; overflow-x: auto; max-height: 300px;"><?php echo esc_html(json_encode($dev_test_results['current_model'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
                 </div>
                 <?php endif; ?>
             </div>

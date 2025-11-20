@@ -154,6 +154,53 @@ class Rakubun_AI_External_API {
         return null;
     }
 
+    /**
+     * Get provider-specific configuration including API key and models
+     * This is the preferred method to get complete provider configuration
+     * 
+     * @param string $provider The provider name (e.g., 'openai', 'novita')
+     * @return array|null Configuration array with api_key, model_article, model_image, etc.
+     */
+    public function get_provider_config($provider = null) {
+        if (!$this->is_connected()) {
+            return null;
+        }
+
+        // Use provided provider or fallback to default
+        $provider = !empty($provider) ? $provider : 'openai';
+        
+        // Don't cache provider config to ensure we always get fresh API keys
+        $response = $this->make_request('GET', '/config/provider', array('provider' => $provider));
+
+        if (!empty($response['success']) && !empty($response)) {
+            $config = array(
+                'api_key' => $response['api_key'] ?? '',
+                'api_provider' => $response['provider'] ?? $provider,
+                'model_article' => $response['model_article'] ?? '',
+                'model_image' => $response['model_image'] ?? '',
+                'max_tokens' => $response['max_tokens'] ?? 2000,
+                'temperature' => $response['temperature'] ?? 0.7,
+                'base_url' => $response['base_url'] ?? ''
+            );
+            
+            // Log if we get valid config with API key
+            if (!empty($config['api_key'])) {
+                error_log('Rakubun AI: Provider config retrieved for ' . $provider . ' with API key');
+            } else {
+                error_log('Rakubun AI: Provider config retrieved for ' . $provider . ' but NO API key found');
+            }
+            
+            return $config;
+        }
+
+        error_log('Rakubun AI: Failed to get provider config. Response: ' . wp_json_encode($response));
+        return null;
+    }
+
+    /**
+     * Get OpenAI configuration (Deprecated - use get_provider_config instead)
+     * Maintained for backwards compatibility
+     */
     public function get_openai_config() {
         if (!$this->is_connected()) {
             return null;
@@ -552,6 +599,53 @@ class Rakubun_AI_External_API {
             'models' => $response['models'] ?? array(),
             'has_api_key' => !empty($response['config']['api_key']),
             'model' => $response['config']['model'] ?? 'unknown'
+        );
+    }
+
+    /**
+     * Development Test: Current Model Configuration
+     * Tests configuration for the currently selected API provider
+     */
+    public function test_current_model_configuration() {
+        if (!$this->is_connected()) {
+            return array(
+                'success' => false,
+                'error' => 'not_connected',
+                'message' => 'Plugin is not connected to dashboard'
+            );
+        }
+
+        $api_provider = get_option('rakubun_ai_api_provider', 'openai');
+        
+        // Pass the selected provider as a query parameter
+        $response = $this->make_request('GET', '/config/provider', array('provider' => $api_provider));
+        
+        if (!$response || empty($response['success'])) {
+            return array(
+                'success' => false,
+                'error' => 'api_error',
+                'message' => 'Failed to fetch provider configuration',
+                'requested_provider' => $api_provider,
+                'response' => $response
+            );
+        }
+
+        return array(
+            'success' => true,
+            'message' => 'Provider configuration retrieved successfully',
+            'requested_provider' => $api_provider,
+            'active_provider' => $response['provider'] ?? 'unknown',
+            'provider_name' => $response['provider_name'] ?? 'Unknown',
+            'config' => array(
+                'api_key' => $response['api_key'] ?? 'not_available',
+                'model_article' => $response['model_article'] ?? 'not_configured',
+                'model_image' => $response['model_image'] ?? 'not_configured',
+                'max_tokens' => $response['max_tokens'] ?? null,
+                'temperature' => $response['temperature'] ?? null,
+                'base_url' => $response['base_url'] ?? null
+            ),
+            'has_api_key' => !empty($response['api_key']),
+            'api_key_preview' => !empty($response['api_key']) ? substr($response['api_key'], 0, 10) . '...' : 'not_set'
         );
     }
 

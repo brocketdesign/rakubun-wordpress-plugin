@@ -5,6 +5,37 @@ All notable changes to the Rakubun AI Content Generator plugin will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-11-19
+
+### Added
+
+#### Multi-Provider Support
+- Support for multiple AI providers (OpenAI and Novita AI)
+- Provider selection and configuration in settings
+- Separate API key management for each provider
+- Provider-specific model configuration
+
+#### OpenAI Integration
+- Default OpenAI provider with GPT-4 and DALL-E-3 models
+- Full backward compatibility with existing OpenAI setups
+
+#### Novita AI Integration
+- New Novita AI provider support
+- Access to DeepSeek R1 and Llama models for article generation
+- DALL-E-3 support for image generation
+- Alternative to OpenAI with competitive pricing
+
+### Changed
+- Plugin version bumped to 2.2.0
+- Enhanced settings page with provider selection dropdown
+- API configuration now provider-aware
+
+### Technical Details
+- New `Rakubun_AI_Provider` class for managing provider configurations
+- Provider settings persisted in WordPress options
+- Transient caching for API configuration
+- Support for provider-specific base URLs and models
+
 ## [1.0.0] - 2024-11-05
 
 ### Added
